@@ -14,13 +14,13 @@ signal launching(package: String)
 const COLS := 5                        ## items per row in the lattice
 const ROWS := 5                        ## rows of nodes kept alive (3 on screen)
 const WINDOW := COLS * ROWS
-const SPACING_X := 0.58
-const SPACING_Y := 0.52                ## rows line up, so they need room
-const SELECTED_SCALE := 0.84
-const ITEM_SCALE := 0.56
-const PUSH := 0.22                     ## how far the selection shoves neighbours
+const SPACING_X := 0.62
+const SPACING_Y := 0.53
+const SELECTED_SCALE := 0.98
+const ITEM_SCALE := 0.64
+const PUSH := 0.34                     ## how far the selection shoves neighbours
 const FADE_ROWS := 1.7
-const FADE_COLS := 2.7
+const FADE_COLS := 2.3
 
 const SCROLL_SPEED := 9.0
 const MAX_LAG_X := float(COLS)         ## a row wrap really does travel that far
@@ -135,7 +135,10 @@ func _layout() -> void:
 		var away := Vector2(dx, dy)
 		var shove := Vector2.ZERO
 		if not is_selected and away.length() > 0.01:
-			shove = away.normalized() * PUSH / maxf(away.length(), 0.85)
+			shove = away.normalized() * PUSH / maxf(away.length() * away.length(), 0.8)
+			# Mostly sideways: a strong vertical shove sends the row below
+			# straight into the bottom bar.
+			shove.y *= 0.4
 		node.position = Vector3(
 			(dx + shove.x) * SPACING_X,
 			-(dy + shove.y) * SPACING_Y,
@@ -191,9 +194,10 @@ func move(step: int) -> void:
 func move_row(step: int) -> void:
 	if items.is_empty() or step == 0:
 		return
-	var row := index / COLS + step
-	if row < 0 or row * COLS >= items.size():
+	var rows := row_count()
+	if rows <= 1:
 		return
+	var row := wrapi(index / COLS + step, 0, rows)
 	var next := row * COLS + mini(index % COLS, maxi(_row_length(row) - 1, 0))
 	if next == index:
 		return

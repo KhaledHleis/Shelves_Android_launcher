@@ -161,7 +161,11 @@ func _ready() -> void:
 	grid_view.jump_to(0)
 	grid_view.jump_to(0)
 	grid_view.move_row(-1)
-	_check(grid_view.index == 0, "and a row move off the top stays put")
+	var last_row := grid_view.row_count() - 1
+	_check(grid_view.index / GridView.COLS == last_row,
+		"a row up from the top wraps to the bottom, got row %d of %d"
+			% [grid_view.index / GridView.COLS, last_row])
+	grid_view.jump_to(0)
 	grid_view.move_row(1)
 	_check(grid_view.index == GridView.COLS, "a row down moves a whole row, got %d" % grid_view.index)
 	# Every row must have a rotatable model, not just the middle of the window.

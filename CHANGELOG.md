@@ -18,6 +18,18 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+### Colours, looping and touch
+
+- Background colours are now the pair in the art that looks best together,
+  scored on hue and lightness distance with coverage only as a tie-break,
+  rather than the two most common — which were usually two shades of one thing.
+- Any folder with four or more apps loops in the carousel, not just long ones.
+- The grid loops vertically as well as inside each row.
+- Touch in the grid: a vertical swipe changes row, and a tap steps toward
+  whatever was tapped on whichever axis is further out.
+- Bigger models in both views, and a stronger push in the grid — damped
+  vertically, since a full-strength shove put the row below into the bar.
+
 ### Grid feel, bevelled shapes, square patterns
 
 - Patterns were stretched: they worked in screen uv, which is 16:9, so every

@@ -10,10 +10,11 @@ signal selection_changed(index: int, total: int, package: String, title: String)
 signal launching(package: String)
 
 const WINDOW := 7                      ## nodes kept alive (must be odd)
+const MIN_WRAP := 4                    ## fewest items that can wrap without a visible repeat
 const HALF := 3
-const SPACING := 0.66
-const CENTER_SCALE := 1.15
-const SIDE_SCALE := 0.70
+const SPACING := 0.80
+const CENTER_SCALE := 1.45
+const SIDE_SCALE := 0.80
 const SIDE_TILT := deg_to_rad(20.0)
 const SIDE_DEPTH := -0.30
 const FADE_FROM := 1.55                ## three on screen: previous, current, next
@@ -98,7 +99,7 @@ func _layout() -> void:
 			continue
 		var offset := float(j - HALF) + _lag
 		var slot := index + (j - HALF)
-		if total >= WINDOW:
+		if total >= MIN_WRAP:
 			slot = wrapi(slot, 0, total)
 		elif slot < 0 or slot >= total:
 			node.visible = false
@@ -137,7 +138,7 @@ func move(step: int) -> void:
 		return
 	var total := items.size()
 	var next := index + step
-	if total >= WINDOW:
+	if total >= MIN_WRAP:
 		next = wrapi(next, 0, total)
 	else:
 		next = clampi(next, 0, total - 1)

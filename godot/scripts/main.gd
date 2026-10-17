@@ -36,6 +36,7 @@ var _sky_material: ShaderMaterial
 var _press_pos := Vector2.ZERO
 var _press_time := 0.0
 var _drag_accum := 0.0
+var _drag_accum_y := 0.0
 var _dragging := false
 var _rotating := false
 var _moved := 0.0
@@ -315,6 +316,7 @@ func _pointer_down(pos: Vector2) -> void:
 	_press_pos = pos
 	_press_time = Time.get_ticks_msec() / 1000.0
 	_drag_accum = 0.0
+	_drag_accum_y = 0.0
 	_moved = 0.0
 	_dragging = true
 	_rotating = _centre_rect().has_point(pos)
@@ -331,6 +333,13 @@ func _pointer_drag(relative: Vector2) -> void:
 	while absf(_drag_accum) >= SWIPE_STEP:
 		view.move(signi(int(_drag_accum)))
 		_drag_accum -= signf(_drag_accum) * SWIPE_STEP
+	if view == grid:
+		# A grid has somewhere to go vertically, so a vertical swipe means
+		# something there — in the carousel it would be a stray gesture.
+		_drag_accum_y -= relative.y
+		while absf(_drag_accum_y) >= SWIPE_STEP:
+			grid.move_row(signi(int(_drag_accum_y)))
+			_drag_accum_y -= signf(_drag_accum_y) * SWIPE_STEP
 
 
 func _pointer_up(pos: Vector2) -> void:
@@ -341,11 +350,21 @@ func _pointer_up(pos: Vector2) -> void:
 	# A drag never launches — the v0.1 rule, kept.
 	if _moved > TAP_SLOP or held > TAP_TIME:
 		return
-	if _centre_rect().has_point(pos):
+	var centre := _centre_rect()
+	if centre.has_point(pos):
 		view.launch_selected()
-	elif pos.x < _centre_rect().position.x:
+		return
+	if view == grid:
+		# Step toward whatever was tapped, by whichever axis is further out.
+		var offset := pos - centre.get_center()
+		if absf(offset.y) / centre.size.y > absf(offset.x) / centre.size.x:
+			grid.move_row(signi(int(offset.y)))
+		else:
+			grid.move(signi(int(offset.x)))
+		return
+	if pos.x < centre.position.x:
 		view.move(-1)
-	elif pos.x > _centre_rect().end.x:
+	elif pos.x > centre.end.x:
 		view.move(1)
 
 
