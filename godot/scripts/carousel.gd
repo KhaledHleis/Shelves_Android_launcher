@@ -19,6 +19,7 @@ const SIDE_DEPTH := -0.30
 const FADE_FROM := 2.2                 ## slots out where an item is invisible
 
 const SCROLL_SPEED := 9.0
+const MAX_LAG := 1.6                   ## slots the view may trail the selection
 const REPEAT_DELAY := 0.38
 const REPEAT_RATE := 0.085
 const PAGE_JUMP := 10
@@ -30,7 +31,10 @@ var index: int = 0
 var locked: bool = false               ## true while an insert animation runs
 
 var _nodes: Array[MediaItem] = []
-var _scroll: float = 0.0
+## How far the view is behind the selection, in slots. Relative on purpose:
+## chasing the absolute index would slide the whole library across the screen
+## when the selection wraps from the last item to the first.
+var _lag: float = 0.0
 var _repeat_dir: int = 0
 var _repeat_timer: float = 0.0
 
@@ -55,7 +59,7 @@ func set_items(list: Array[Dictionary], keep_package: String = "") -> void:
 			if items[i]["package"] == keep_package:
 				index = i
 				break
-	_scroll = float(index)
+	_lag = 0.0
 	_refresh_window(true)
 	_emit_selection()
 
@@ -73,9 +77,9 @@ func center_node() -> MediaItem:
 # ---------------------------------------------------------------- loop
 
 func _process(delta: float) -> void:
-	_scroll = lerpf(_scroll, float(index), clampf(delta * SCROLL_SPEED, 0.0, 1.0))
-	if absf(_scroll - float(index)) < 0.001:
-		_scroll = float(index)
+	_lag = lerpf(_lag, 0.0, clampf(delta * SCROLL_SPEED, 0.0, 1.0))
+	if absf(_lag) < 0.001:
+		_lag = 0.0
 	_layout()
 	if locked:
 		return
@@ -90,7 +94,7 @@ func _layout() -> void:
 		if total == 0:
 			node.visible = false
 			continue
-		var offset := float(j - HALF) - (_scroll - float(index))
+		var offset := float(j - HALF) + _lag
 		var slot := index + (j - HALF)
 		if total >= WINDOW:
 			slot = wrapi(slot, 0, total)
@@ -138,6 +142,9 @@ func move(step: int) -> void:
 	if next == index:
 		return
 	index = next
+	# step, not (next - old index): wrapping jumps the index the length of the
+	# library, but the strip still only slides one slot.
+	_lag = clampf(_lag + float(step), -MAX_LAG, MAX_LAG)
 	Audio.play("move", 0.06)
 	_layout()
 	center_node().play_switch()
@@ -151,7 +158,7 @@ func jump_to(target: int) -> void:
 	if next == index:
 		return
 	index = next
-	_scroll = float(index)
+	_lag = 0.0
 	Audio.play("move", 0.06)
 	_refresh_window(true)
 	_emit_selection()

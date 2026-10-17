@@ -51,6 +51,24 @@ func _ready() -> void:
 	_check(media == Carousel.WINDOW, "only %d models instanced, got %d"
 		% [Carousel.WINDOW, media])
 
+	# The wrap must look like any other one-step move: a selection that jumps
+	# from the last item to the first used to slide the whole library past.
+	# Measure every model, visible or not — when the bug was present they all
+	# flew far enough out to be culled, which a visible-only check would miss.
+	carousel.jump_to(0)
+	carousel.move(-1)
+	var travel := 0.0
+	var on_screen := 0
+	for child in carousel.get_children():
+		if child is MediaItem:
+			travel = maxf(travel, absf((child as MediaItem).position.x))
+			if (child as MediaItem).visible:
+				on_screen += 1
+	var limit := Carousel.SPACING * (Carousel.HALF + 2)
+	_check(travel < limit, "wrapping slides one slot, not the whole list (max %.2f, limit %.2f)"
+		% [travel, limit])
+	_check(on_screen >= 3, "the shelf is still populated after a wrap, got %d" % on_screen)
+
 	carousel.launch_selected()
 	_check(carousel.locked, "launching locks input until the animation ends")
 
