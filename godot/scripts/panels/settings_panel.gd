@@ -28,6 +28,12 @@ func build_rows() -> Array[Dictionary]:
 			"checked": bool(Settings.get_value("sounds_enabled"))},
 		{"id": "sound_volume_db", "text": "Sound volume",
 			"suffix": "%d dB" % int(Settings.get_value("sound_volume_db"))},
+		{"id": "bg_style", "text": "Background style",
+			"suffix": str(Settings.get_value("bg_style"))},
+		{"id": "bg_overlay", "text": "Background pattern",
+			"suffix": str(Settings.get_value("bg_overlay"))},
+		{"id": "bg_overlay_strength", "text": "Pattern strength",
+			"suffix": "%d%%" % int(float(Settings.get_value("bg_overlay_strength")) * 100.0)},
 		{"id": "carousel_autorotate", "text": "Idle animation",
 			"checked": bool(Settings.get_value("carousel_autorotate"))},
 		{"id": "clock_24h", "text": "24-hour clock",
@@ -63,6 +69,32 @@ func on_activate(id: String) -> void:
 				func(value: String) -> void:
 					Settings.set_value("sound_volume_db", float(value))
 					Audio.play("select")
+					refresh()
+			)
+			return
+		"bg_style":
+			choose("Background style", Settings.BG_STYLES, str(Settings.get_value("bg_style")),
+				func(value: String) -> void:
+					Settings.set_value("bg_style", value)
+					refresh()
+			)
+			return
+		"bg_overlay":
+			choose("Background pattern", Settings.BG_OVERLAYS,
+				str(Settings.get_value("bg_overlay")),
+				func(value: String) -> void:
+					Settings.set_value("bg_overlay", value)
+					refresh()
+			)
+			return
+		"bg_overlay_strength":
+			var steps := []
+			for pct in [15, 30, 50, 75]:
+				steps.append({"id": "%d" % pct, "text": "%d%%" % pct})
+			choose("Pattern strength", steps,
+				"%d" % int(float(Settings.get_value("bg_overlay_strength")) * 100.0),
+				func(value: String) -> void:
+					Settings.set_value("bg_overlay_strength", float(value) / 100.0)
 					refresh()
 			)
 			return

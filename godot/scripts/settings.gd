@@ -21,6 +21,9 @@ const DEFAULTS := {
 	"music_volume_db": -14.0,
 	"clock_24h": true,
 	"carousel_autorotate": true, # idle sway on the selected model
+	"bg_style": "pools",         # pools | blending | sweep
+	"bg_overlay": "none",        # none | dots | mesh | triangles | chladni
+	"bg_overlay_strength": 0.30,
 }
 
 var _data: Dictionary = DEFAULTS.duplicate(true)
@@ -65,6 +68,20 @@ func save_settings() -> void:
 		return
 	f.store_string(JSON.stringify(_data, "\t"))
 	f.close()
+
+
+const BG_STYLES := ["pools", "blending", "sweep"]
+const BG_OVERLAYS := ["none", "dots", "mesh", "triangles", "chladni"]
+
+
+## The shader takes numbers; the settings file keeps names, so the file stays
+## readable and reordering the lists cannot silently change someone's look.
+func bg_style_index() -> int:
+	return maxi(BG_STYLES.find(str(get_value("bg_style"))), 0)
+
+
+func bg_overlay_index() -> int:
+	return maxi(BG_OVERLAYS.find(str(get_value("bg_overlay"))), 0)
 
 
 ## Maps the prompt_style setting onto the Controller Icons device enum.

@@ -67,6 +67,11 @@ func _ready() -> void:
 	Library.folders_changed.connect(_on_library_changed)
 	AppBridge.icon_ready.connect(_on_icon_ready)
 
+	Settings.changed.connect(func(key: String) -> void:
+		if key.begins_with("bg_"):
+			_apply_background_style()
+	)
+	_apply_background_style()
 	_on_library_changed()
 
 
@@ -211,6 +216,16 @@ func _on_selection_changed(index: int, total: int, package: String, name: String
 func _on_icon_ready(package: String, _tex: Texture2D) -> void:
 	if view != null and package == str(view.current().get("package", "")):
 		_tint_background(package)
+
+
+## Style and pattern are launcher-wide; the two colours are per app.
+func _apply_background_style() -> void:
+	if _sky_material == null:
+		return
+	_sky_material.set_shader_parameter("style", Settings.bg_style_index())
+	_sky_material.set_shader_parameter("overlay", Settings.bg_overlay_index())
+	_sky_material.set_shader_parameter("overlay_strength",
+		float(Settings.get_value("bg_overlay_strength")))
 
 
 func _tint_background(package: String) -> void:

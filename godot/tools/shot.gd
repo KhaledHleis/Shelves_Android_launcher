@@ -18,6 +18,12 @@ func _ready() -> void:
 			var app: Dictionary = Library.search()[i]
 			Library.set_app_value(app["package"], "model", kinds[i])
 			Library.set_app_value(app["package"], "finish", finishes[i])
+	for a in args:
+		if a.begins_with("style="):
+			Settings.set_value("bg_style", a.substr(6))
+		if a.begins_with("overlay="):
+			Settings.set_value("bg_overlay", a.substr(8))
+			Settings.set_value("bg_overlay_strength", 0.5)
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 

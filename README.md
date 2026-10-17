@@ -191,6 +191,20 @@ MIT — see `LICENSE`. Third-party code and assets are listed in
   the AAR is missing, and the launcher shows `MOCK DATA — plugin not loaded`
   rather than quietly listing apps that do not exist.
 
+## Background
+
+Two settings, both launcher-wide, over colours that come from the selected app:
+
+- **Style** — `pools` (two drifting lights), `blending` (noise warped by noise,
+  so the colours fold into each other in marbled bands rather than meeting on
+  a clean line), `sweep` (a soft turn around the centre with a ragged edge).
+- **Pattern** — `none`, `dots`, `mesh`, `triangles`, `chladni`. The last draws
+  the nodal lines of a vibrating square plate, with both mode numbers drifting
+  so the figure keeps rebuilding itself. Strength is adjustable.
+
+Everything is in one sky shader, which is why it costs a single full-screen
+pass however it is configured.
+
 ## Custom 3D models (planned for v0.7, contract fixed now)
 
 The four shapes are built by `box_mesh.gd` rather than imported, and every one

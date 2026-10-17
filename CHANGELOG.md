@@ -18,6 +18,14 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+### Background shaders
+
+- Gradient styles: pools, irregular blending (domain-warped value noise), and
+  a sweep with a noisy edge.
+- Pattern overlays drawn over the gradient: dots, mesh, triangles and Chladni
+  figures, with adjustable strength.
+- Both are settings with their own lists; the colours still come from the app.
+
 ### Fixed after the first v0.4 build on device
 
 - Moving from the end of a row to the start of the next cut instead of
