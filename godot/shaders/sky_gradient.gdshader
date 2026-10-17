@@ -9,7 +9,7 @@ shader_type sky;
 uniform vec3 color_a : source_color = vec3(0.18, 0.14, 0.30);
 uniform vec3 color_b : source_color = vec3(0.04, 0.05, 0.09);
 uniform float speed = 0.05;
-uniform float grain = 0.015;
+uniform float grain = 0.02;
 uniform float spread = 1.05;
 
 float blob(vec2 uv, vec2 centre, float radius) {
@@ -36,9 +36,12 @@ void sky() {
 	// vignette
 	col *= 1.0 - distance(uv, vec2(0.5)) * 0.55;
 
-	// a little dither keeps wide gradients from banding on cheap panels
+	// A little dither keeps wide gradients from banding on cheap panels.
+	// It has to scale with brightness: a fixed amount is invisible on a lit
+	// area but reads as static once the colour is near black, because one
+	// display step is a far smaller linear step down there.
 	float n = fract(sin(dot(uv * 1024.0, vec2(12.9898, 78.233))) * 43758.5453);
-	col += (n - 0.5) * grain;
+	col += (n - 0.5) * grain * sqrt(max(col.r, max(col.g, col.b)));
 
 	COLOR = col;
 }
