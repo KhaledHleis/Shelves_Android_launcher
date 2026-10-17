@@ -121,15 +121,37 @@ func open() -> void:
 	if _search != null:
 		_search.text = ""
 	refresh()
+	_play_open()
+
+
+## Comes in from the right and settles, so a screen arriving reads as a move
+## rather than a cut.
+func _play_open() -> void:
+	modulate.a = 0.0
+	var slide := 60.0
+	position.x = slide
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(self, "modulate:a", 1.0, 0.14)
+	tween.tween_property(self, "position:x", 0.0, 0.22) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:
 	is_open = false
-	visible = false
 	if _dialog != null:
 		_dialog.queue_free()
 		_dialog = null
+	# Hand input back at once, but let the panel leave on its own time.
 	closed.emit()
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(self, "modulate:a", 0.0, 0.12)
+	tween.tween_property(self, "position:x", 40.0, 0.16) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(func() -> void:
+		if not is_open:
+			visible = false
+			position.x = 0.0
+	)
 
 
 func set_title(text: String) -> void:

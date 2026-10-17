@@ -18,6 +18,21 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+## v0.5 — Design pass (in progress)
+
+- Models stand on something: a soft contact shadow is drawn under each one,
+  since there is no floor in the scene for a real shadow to fall on.
+- Apps with no picture get a printed cover rather than a flat slab — the
+  bright colour runs into the deep one, with a sheen across it and a darker
+  band at the foot where the title sits.
+- Panels slide in from the right and leave the same way, so a screen arriving
+  reads as a move rather than a cut. Input is handed back the moment a panel
+  closes, not when its animation ends.
+
+Still to come in v0.5: a theme resource in place of per-script colours, a
+pass over typography and spacing, better proportions and lighting on the
+shapes themselves, and the launcher icon and splash.
+
 ### Colours, looping and touch
 
 - Background colours are now the pair in the art that looks best together,

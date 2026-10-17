@@ -19,12 +19,14 @@ var _pivot: Node3D
 var _box: MeshInstance3D
 var _icon: MeshInstance3D
 var _label: Label3D
+var _shadow: MeshInstance3D
 var _cover_mat: StandardMaterial3D
 var _body_mat: StandardMaterial3D
 var _icon_mat: StandardMaterial3D
 
 var _user_yaw := 0.0                   ## yaw added by the right stick or a drag
 var _kind: String = "box"
+var _has_user_art := false
 var _finish: String = "opaque"
 var _idle_since := 0.0
 var _phase := 0.0
@@ -75,6 +77,25 @@ func _init() -> void:
 	_label.modulate = Color(1, 1, 1, 0.95)
 	_label.outline_size = 0
 	_pivot.add_child(_label)
+
+	# A soft contact shadow under the model. Without it the case floats: there
+	# is nothing in the scene for it to stand on, so the shadow has to be
+	# drawn rather than cast.
+	var shadow_mat := StandardMaterial3D.new()
+	shadow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shadow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	shadow_mat.albedo_texture = _shadow_texture()
+	shadow_mat.albedo_color = Color(0, 0, 0, 0.55)
+	shadow_mat.billboard_mode = BaseMaterial3D.BILLBOARD_DISABLED
+	shadow_mat.no_depth_test = false
+	var shadow_quad := QuadMesh.new()
+	shadow_quad.size = Vector2(0.62, 0.30)
+	_shadow = MeshInstance3D.new()
+	_shadow.name = "Shadow"
+	_shadow.mesh = shadow_quad
+	_shadow.material_override = shadow_mat
+	_shadow.rotation_degrees = Vector3(-78, 0, 0)
+	_pivot.add_child(_shadow)
 
 	_phase = randf() * TAU
 
@@ -127,6 +148,7 @@ func apply_customization() -> void:
 
 	var half_depth := BoxMediaMesh.depth_for(_kind)
 	var half_height := BoxMediaMesh.height_for(_kind) * 0.5
+	_shadow.position = Vector3(0, -half_height - 0.01, 0.04)
 	var icon_quad := _icon.mesh as QuadMesh
 	icon_quad.size = Vector2.ONE * (0.30 if _kind == "box" else 0.22)
 	_icon.position = Vector3(0, half_height * 0.25, half_depth + 0.002)
@@ -136,11 +158,11 @@ func apply_customization() -> void:
 	var cover := ArtLibrary.texture(str(rec.get("cover", "")))
 	var label_art := ArtLibrary.texture(str(rec.get("label", "")))
 	var art: Texture2D = label_art if _kind in ["disc", "cartridge"] and label_art != null else cover
+	_has_user_art = art != null
 	_cover_mat.albedo_texture = art
-	var has_art := art != null
-	_icon.visible = not has_art
-	_label.visible = not has_art
-	if has_art:
+	_icon.visible = not _has_user_art
+	_label.visible = not _has_user_art
+	if _has_user_art:
 		_cover_mat.albedo_color = Color.WHITE
 
 
@@ -185,12 +207,59 @@ func _apply_colors(tex: Texture2D) -> void:
 	var colors := IconColors.pair(tex, package) if tex != null else [Style.BG_MID, Style.BG_DARK]
 	var vivid: Color = colors[0]
 	var deep: Color = colors[1]
-	if _cover_mat.albedo_texture == null:
-		var tint := deep.lerp(vivid, 0.55)
-		tint.a = _cover_mat.albedo_color.a
-		_cover_mat.albedo_color = tint
+	if not _has_user_art:
+		# A printed cover, not a painted rectangle: the art runs from the
+		# bright colour at the top into the deep one, with a darker band at
+		# the foot where the title sits.
+		_cover_mat.albedo_texture = _generated_cover(vivid, deep)
+		var white := Color.WHITE
+		white.a = _cover_mat.albedo_color.a
+		_cover_mat.albedo_color = white
 	_body_mat.albedo_color = deep.darkened(0.35)
 	_label.modulate = Color(1, 1, 1, 0.95)
+
+
+static var _shadow_tex: Texture2D = null
+static var _cover_cache: Dictionary = {}
+
+
+## One soft ellipse, reused by every model.
+static func _shadow_texture() -> Texture2D:
+	if _shadow_tex != null:
+		return _shadow_tex
+	var size := 64
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	for y in size:
+		for x in size:
+			var d := Vector2(float(x) / size - 0.5, float(y) / size - 0.5).length() * 2.0
+			var a: float = clampf(1.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0, 0, 0, a * a))
+	_shadow_tex = ImageTexture.create_from_image(img)
+	return _shadow_tex
+
+
+## The cover for an app with no picture of its own.
+static func _generated_cover(vivid: Color, deep: Color) -> Texture2D:
+	var key := "%s_%s" % [vivid.to_html(false), deep.to_html(false)]
+	if _cover_cache.has(key):
+		return _cover_cache[key]
+	var w := 48
+	var h := 72
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		var t := float(y) / float(h - 1)
+		var row := vivid.lerp(deep, pow(t, 0.8))
+		for x in w:
+			var c := row
+			# a soft diagonal sheen, and a darker band under the title
+			var sheen: float = clampf(1.0 - absf((float(x) / w) + t * 0.6 - 0.75) * 3.0, 0.0, 1.0)
+			c = c.lerp(Color.WHITE, sheen * 0.10)
+			if t > 0.70:
+				c = c.darkened(0.25)
+			img.set_pixel(x, y, c)
+	var tex := ImageTexture.create_from_image(img)
+	_cover_cache[key] = tex
+	return tex
 
 
 ## Two dominant colours of the current item, for the background gradient.

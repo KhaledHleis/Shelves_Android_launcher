@@ -1,4 +1,4 @@
-# Shelves — v0.4 "Customisation"
+# Shelves — v0.5 "Design pass" (in progress)
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
@@ -12,8 +12,10 @@ icon) and fixes what breaks on a large Android library.
 Godot 4.7 for everything you see, a small Kotlin plugin for everything that
 needs Android.
 
-v0.4 adds Inspect: every app can have its own media shape, finish, art, name
-and launch action. Slow mode (the shelf and the open box) is v0.5.
+v0.5 is a design pass over what already exists rather than new screens:
+contact shadows, printed covers, panel motion, and — still to do — a theme
+resource, a typography and spacing pass, better shape proportions and
+lighting, and the launcher icon. Slow mode moves to v0.6.
 
 ## What v0.4 adds on top of v0.3
 
