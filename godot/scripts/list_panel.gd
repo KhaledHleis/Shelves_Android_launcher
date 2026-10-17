@@ -10,7 +10,7 @@ signal closed
 ## Asks the host to put a list of values on top of this panel.
 signal choice_requested(heading: String, options: Array, current: String, on_pick: Callable)
 
-const ROW_HEIGHT := 76
+const ROW_HEIGHT := 78
 const REPEAT_DELAY := 0.35
 const REPEAT_RATE := 0.07
 
@@ -51,10 +51,10 @@ func _ready() -> void:
 
 	_title = Label.new()
 	_title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_title.offset_left = 56
+	_title.offset_left = Style.GUTTER
 	_title.offset_top = 36
 	_title.offset_bottom = 36 + 56
-	_title.add_theme_font_size_override("font_size", Style.FONT_TITLE)
+	_title.add_theme_font_size_override("font_size", Style.FONT_HEADING)
 	_title.add_theme_color_override("font_color", Style.TEXT)
 	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_title)
@@ -62,8 +62,8 @@ func _ready() -> void:
 	_search = LineEdit.new()
 	_search.placeholder_text = "Search"
 	_search.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	_search.offset_left = 56
-	_search.offset_right = -56
+	_search.offset_left = Style.GUTTER
+	_search.offset_right = -Style.GUTTER
 	_search.offset_top = 104
 	_search.offset_bottom = 104 + 56
 	_search.add_theme_font_size_override("font_size", Style.FONT_BODY)
@@ -73,8 +73,8 @@ func _ready() -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_scroll.offset_left = 56
-	_scroll.offset_right = -56
+	_scroll.offset_left = Style.GUTTER
+	_scroll.offset_right = -Style.GUTTER
 	_scroll.offset_top = 176
 	_scroll.offset_bottom = -Style.BAR_HEIGHT - 16
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -102,7 +102,7 @@ func _ready() -> void:
 
 	_prompts = HBoxContainer.new()
 	_prompts.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_prompts.offset_left = 56
+	_prompts.offset_left = Style.GUTTER
 	_prompts.offset_top = -Style.BAR_HEIGHT
 	_prompts.add_theme_constant_override("separation", 32)
 	add_child(_prompts)
@@ -127,13 +127,15 @@ func open() -> void:
 ## Comes in from the right and settles, so a screen arriving reads as a move
 ## rather than a cut.
 func _play_open() -> void:
+	# Scale and fade, never position: a Control's position rewrites its
+	# offsets, which threw a centred popup into the corner.
 	modulate.a = 0.0
-	var slide := 60.0
-	position.x = slide
+	pivot_offset = size * 0.5
+	scale = Vector2(0.97, 0.97)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(self, "modulate:a", 1.0, 0.14)
-	tween.tween_property(self, "position:x", 0.0, 0.22) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", Vector2.ONE, 0.22) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func close() -> void:
@@ -145,12 +147,11 @@ func close() -> void:
 	closed.emit()
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(self, "modulate:a", 0.0, 0.12)
-	tween.tween_property(self, "position:x", 40.0, 0.16) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(self, "scale", Vector2(0.97, 0.97), 0.14)
 	tween.chain().tween_callback(func() -> void:
 		if not is_open:
 			visible = false
-			position.x = 0.0
+			scale = Vector2.ONE
 	)
 
 
@@ -161,6 +162,30 @@ func set_title(text: String) -> void:
 func enable_search(enabled: bool) -> void:
 	_search.visible = enabled
 	_scroll.offset_top = 176 if enabled else 112
+
+
+## A small centred card, for a picker that has no business covering the shelf.
+func set_popup(width: int, height: int) -> void:
+	anchor_left = 0.5
+	anchor_right = 0.5
+	anchor_top = 0.5
+	anchor_bottom = 0.5
+	offset_left = -width * 0.5
+	offset_right = width * 0.5
+	offset_top = -height * 0.5
+	offset_bottom = height * 0.5
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
+	_dim.color = Color(Style.SURFACE, 0.99)
+	_title.offset_left = 28
+	_title.offset_top = 20
+	_title.offset_bottom = 64
+	_scroll.offset_left = 20
+	_scroll.offset_right = -20
+	_scroll.offset_top = 76
+	_scroll.offset_bottom = -64
+	_prompts.offset_left = 24
+	_prompts.offset_top = -56
 
 
 ## A sheet covers part of the screen instead of all of it, so whatever is
@@ -311,7 +336,7 @@ func _make_row(i: int, row: Dictionary) -> Control:
 
 func _make_tile(i: int, row: Dictionary) -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 190)
+	panel.custom_minimum_size = Vector2(0, 110 if row.has("swatch") else 190)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(func(event: InputEvent) -> void:
@@ -329,6 +354,20 @@ func _make_tile(i: int, row: Dictionary) -> Control:
 	column.add_theme_constant_override("separation", 10)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(column)
+
+	if row.has("swatch") and str(row.get("text", "")).is_empty():
+		# A colour tile is just the colour, with the current one ringed.
+		var fill := PanelContainer.new()
+		fill.custom_minimum_size = Vector2(0, 74)
+		fill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var chip_style := Style.pill(row["swatch"], 10)
+		if bool(row.get("checked", false)):
+			chip_style.set_border_width_all(4)
+			chip_style.border_color = Style.TEXT
+		fill.add_theme_stylebox_override("panel", chip_style)
+		column.add_child(fill)
+		return panel
 
 	var package := str(row.get("icon", ""))
 	var icon := TextureRect.new()

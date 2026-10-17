@@ -5,7 +5,7 @@ extends Control
 
 signal prompt_activated(id: String)
 
-const SIDE_MARGIN := 40
+const SIDE_MARGIN := Style.GUTTER
 
 var indicator: ShelfIndicator
 

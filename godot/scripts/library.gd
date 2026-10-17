@@ -226,17 +226,31 @@ const PALETTES := {
 
 
 ## The swatch grid, the same idea as Socket's colour picker.
-const SWATCHES := {
-	"white": Color(0.93, 0.94, 0.96), "silver": Color(0.65, 0.67, 0.71),
-	"ink": Color(0.10, 0.11, 0.14), "cream": Color(0.93, 0.89, 0.78),
-	"sand": Color(0.78, 0.72, 0.56), "brown": Color(0.45, 0.31, 0.22),
-	"red": Color(0.86, 0.19, 0.21), "coral": Color(0.90, 0.40, 0.31),
-	"amber": Color(0.96, 0.76, 0.14), "green": Color(0.30, 0.75, 0.36),
-	"mint": Color(0.20, 0.84, 0.62), "teal": Color(0.17, 0.55, 0.57),
-	"blue": Color(0.20, 0.40, 0.78), "indigo": Color(0.36, 0.30, 0.72),
-	"violet": Color(0.55, 0.38, 0.78), "pink": Color(0.85, 0.42, 0.62),
-	"gold": Color(0.78, 0.65, 0.25), "grey": Color(0.55, 0.56, 0.60),
+## Swatches, built rather than listed: eight hues at three lightnesses plus a
+## grey column. Names are ids only — the picker shows colour, not words.
+const SWATCH_HUES := {
+	"red": 0.00, "orange": 0.07, "yellow": 0.14, "green": 0.33,
+	"teal": 0.47, "blue": 0.60, "violet": 0.74, "pink": 0.90,
 }
+const SWATCH_LEVELS := {"light": [0.45, 0.97], "mid": [0.80, 0.80], "deep": [0.90, 0.45]}
+const SWATCH_GREYS := {
+	"white": 0.97, "silver": 0.75, "grey": 0.52, "slate": 0.34,
+	"charcoal": 0.20, "ink": 0.09,
+}
+
+
+static func swatches() -> Dictionary:
+	var out := {}
+	for level in SWATCH_LEVELS:
+		var sv: Array = SWATCH_LEVELS[level]
+		for hue in SWATCH_HUES:
+			out["%s %s" % [level, hue]] = Color.from_hsv(SWATCH_HUES[hue], sv[0], sv[1])
+	for name in SWATCH_GREYS:
+		out[name] = Color.from_hsv(0.0, 0.0, SWATCH_GREYS[name])
+	return out
+
+
+static var SWATCHES: Dictionary = swatches()
 
 
 ## The two colours the background gradient uses for this app: taken from the
@@ -368,7 +382,8 @@ func _new_record() -> Dictionary:
 		"first_seen": 0,
 		"folders": [],          # manual folder ids
 		"model": "box",         # box | cartridge | disc | card
-		"finish": "opaque",     # opaque | translucent | clear | metallic | glitter
+		"finish": "opaque",     # on the art: opaque | translucent | clear | metallic | glitter
+		"shell": "matte",       # the plastic: matte | glossy | smoked | metal | rubber
 		"cover": "",            # path to an image in the watched art folder
 		"label": "",
 		"background": "auto",   # auto, a name from PALETTES, or custom

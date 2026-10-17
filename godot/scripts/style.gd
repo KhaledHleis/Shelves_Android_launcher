@@ -21,11 +21,18 @@ const OFF := Color(0.80, 0.28, 0.30)
 const RADIUS := 999            ## fully rounded, which is what makes it a pill
 const CARD_RADIUS := 14
 
-const FONT_SMALL := 22
-const FONT_BODY := 26
-const FONT_TITLE := 44
-const BAR_HEIGHT := 92
-const PROMPT_ICON := 44
+## One scale, each step a little over 1.25x the last, so sizes relate to each
+## other instead of being picked per screen.
+const FONT_CAPTION := 20
+const FONT_SMALL := 24
+const FONT_BODY := 30
+const FONT_HEADING := 38
+const FONT_TITLE := 48
+
+const BAR_HEIGHT := 96
+const PROMPT_ICON := 40
+const GUTTER := 56                ## distance from the screen edge, everywhere
+const GAP := 14                   ## between things that belong together
 
 
 ## A rounded fill. radius 999 gives a pill, smaller gives a card.

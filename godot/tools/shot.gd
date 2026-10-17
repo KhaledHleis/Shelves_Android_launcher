@@ -37,6 +37,12 @@ func _ready() -> void:
 		main._inspect.open_for(app3["package"], app3["name"])
 		await get_tree().create_timer(0.3).timeout
 		main._inspect.on_activate("finish")
+	if args.has("colour"):
+		var app4: Dictionary = Library.search()[0]
+		main._push(main._inspect)
+		main._inspect.open_for(app4["package"], app4["name"])
+		await get_tree().create_timer(0.3).timeout
+		main._inspect.on_activate("bg_a")
 	if args.has("inspect"):
 		var app2: Dictionary = Library.search()[0]
 		main._push(main._inspect)

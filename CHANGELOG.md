@@ -29,9 +29,37 @@ working APK.
   reads as a move rather than a cut. Input is handed back the moment a panel
   closes, not when its animation ends.
 
-Still to come in v0.5: a theme resource in place of per-script colours, a
-pass over typography and spacing, better proportions and lighting on the
-shapes themselves, and the launcher icon and splash.
+- One type scale (caption, small, body, heading, title) instead of sizes
+  picked per screen, and a single gutter and gap used by the bars and every
+  panel.
+- A rim light with strong specular, so an edge separates from a dark
+  background instead of dissolving into it.
+- A launcher icon that shows the product — three cases on a shelf — and a
+  boot splash using it.
+
+- Both ends of the background gradient take the icon's colour. The second one
+  was being crushed to near-black, so every background read as one colour
+  fading into the same darkness whatever the art was.
+- The colour picker is a small centred grid of 30 chips with no names, over
+  whatever you are editing, rather than a full-screen list.
+- Panels scale and fade rather than sliding: setting a Control's position
+  rewrites its offsets, which threw the centred popup into a corner.
+
+- The cartridge is a Switch-style card: a plastic shell with the corner notch
+  and tapered foot, and a sticker sitting proud of the face. The sticker is
+  its own surface, which is what lets the art and the plastic be set apart.
+- The case has PS4 proportions, thinner than the slab it was.
+- Finish (opaque, translucent, clear, metallic, glitter) applies to the art
+  only; a separate Material setting (matte, glossy, smoked, metal, rubber)
+  controls the plastic. They were one control before, which is why changing
+  the finish seemed to do nothing on a cartridge.
+- `templates/` holds a .glb per shape to model from, exported from the meshes
+  themselves by tools/export_templates.tscn.
+- The boot splash is off again: Godot only takes PNG there and the icon is an
+  SVG, so it was silently falling back to the Godot logo.
+
+Still to come in v0.5: a theme resource in place of the constants in
+style.gd.
 
 ### Colours, looping and touch
 

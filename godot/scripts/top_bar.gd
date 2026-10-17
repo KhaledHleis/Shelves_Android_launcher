@@ -7,7 +7,7 @@ extends Control
 
 signal folder_tapped(index: int)
 
-const SIDE_MARGIN := 40
+const SIDE_MARGIN := Style.GUTTER
 
 var _clock: Label
 var _tabs_box: HBoxContainer

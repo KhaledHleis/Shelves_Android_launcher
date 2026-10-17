@@ -9,9 +9,10 @@ extends RefCounted
 ## v0.4 swaps in cartridge / disc / card meshes; v0.7 loads .glb files. Both
 ## plug in here, which is why the mesh is built rather than imported.
 
+## A PS4 case: 171 x 135 x 14 mm in real life, so roughly 1 : 0.79 : 0.08.
 const WIDTH := 0.42
-const HEIGHT := 0.60
-const DEPTH := 0.075
+const HEIGHT := 0.53
+const DEPTH := 0.042
 
 static var _cached: ArrayMesh = null
 
@@ -175,8 +176,71 @@ static func _slab(w: float, h: float, d: float, bevel: float = 0.018) -> ArrayMe
 	return mesh
 
 
+## A Switch-style cartridge: a small plastic shell with a sticker on the
+## front. The sticker is surface 0 — the art and its finish live there — and
+## the shell is surface 1, which is where the plastic material applies. That
+## split is the whole point of the shape.
 static func _cartridge() -> ArrayMesh:
-	return _slab(0.46, 0.42, 0.11, 0.022)
+	var w := 0.33
+	var h := 0.38
+	var d := 0.036
+	var hw := w * 0.5
+	var hh := h * 0.5
+	var hd := d * 0.5
+	var mesh := ArrayMesh.new()
+
+	# surface 0: the sticker, sitting just proud of the shell face
+	var sticker := SurfaceTool.new()
+	sticker.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var sw := hw * 0.84
+	var sh := hh * 0.80
+	var sz := hd + 0.0012
+	_quad(sticker, Vector3(-sw, sh + hh * 0.06, sz), Vector3(sw, sh + hh * 0.06, sz),
+		Vector3(sw, -sh + hh * 0.06, sz), Vector3(-sw, -sh + hh * 0.06, sz), Vector3(0, 0, 1))
+	sticker.generate_tangents()
+	sticker.commit(mesh)
+
+	# surface 1: the shell, with the corner notch a Switch card has and a
+	# tapered foot where the contacts sit
+	var shell := SurfaceTool.new()
+	shell.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var notch := 0.055
+	var foot := -hh + 0.055
+	var front := [
+		Vector3(-hw, hh, hd), Vector3(hw - notch, hh, hd), Vector3(hw, hh - notch, hd),
+		Vector3(hw, foot, hd), Vector3(hw * 0.86, -hh, hd), Vector3(-hw * 0.86, -hh, hd),
+		Vector3(-hw, foot, hd),
+	]
+	_fan(shell, front, Vector3(0, 0, 1), hw, hh, false)
+	var back: Array[Vector3] = []
+	for p in front:
+		back.append(Vector3(p.x, p.y, -hd))
+	_fan(shell, back, Vector3(0, 0, -1), hw, hh, true)
+	for i in front.size():
+		var a: Vector3 = front[i]
+		var b: Vector3 = front[(i + 1) % front.size()]
+		var edge := (b - a).normalized()
+		var normal := Vector3(edge.y, -edge.x, 0).normalized()
+		_quad(shell, Vector3(a.x, a.y, -hd), Vector3(b.x, b.y, -hd), b, a, normal)
+	shell.generate_tangents()
+	shell.commit(mesh)
+	mesh.surface_set_name(0, "art")
+	mesh.surface_set_name(1, "body")
+	return mesh
+
+
+## Triangle fan over a convex outline, UV mapped across its bounds.
+static func _fan(st: SurfaceTool, pts: Array, normal: Vector3, hw: float, hh: float,
+		flip: bool) -> void:
+	var order := range(1, pts.size() - 1)
+	for i in order:
+		var tri := [pts[0], pts[i], pts[i + 1]]
+		if flip:
+			tri.reverse()
+		for p in tri:
+			st.set_normal(normal)
+			st.set_uv(Vector2(p.x / (hw * 2.0) + 0.5, 0.5 - p.y / (hh * 2.0)))
+			st.add_vertex(p)
 
 
 static func _card() -> ArrayMesh:

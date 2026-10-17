@@ -28,6 +28,7 @@ var _user_yaw := 0.0                   ## yaw added by the right stick or a drag
 var _kind: String = "box"
 var _has_user_art := false
 var _finish: String = "opaque"
+var _shell: String = "matte"
 var _idle_since := 0.0
 var _phase := 0.0
 var _locked := false                   ## true during the insert animation
@@ -143,8 +144,10 @@ func apply_customization() -> void:
 	var rec := Library.record(package)
 	_kind = str(rec.get("model", "box"))
 	_finish = str(rec.get("finish", "opaque"))
+	_shell = str(rec.get("shell", "matte"))
 	_box.mesh = BoxMediaMesh.mesh_for(_kind)
 	_apply_finish()
+	_apply_shell()
 
 	var half_depth := BoxMediaMesh.depth_for(_kind)
 	var half_height := BoxMediaMesh.height_for(_kind) * 0.5
@@ -203,6 +206,34 @@ func apply_icon(tex: Texture2D) -> void:
 	_apply_colors(tex)
 
 
+## The plastic the shape is made of, which is a different question from the
+## finish on the art stuck to it.
+func _apply_shell() -> void:
+	match _shell:
+		"glossy":
+			_body_mat.roughness = 0.12
+			_body_mat.metallic = 0.0
+			_body_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		"smoked":
+			_body_mat.roughness = 0.18
+			_body_mat.metallic = 0.0
+			_body_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_body_mat.albedo_color.a = 0.55
+		"metal":
+			_body_mat.roughness = 0.28
+			_body_mat.metallic = 0.9
+			_body_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		"rubber":
+			_body_mat.roughness = 0.95
+			_body_mat.metallic = 0.0
+			_body_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		_:
+			_body_mat.roughness = 0.62
+			_body_mat.metallic = 0.0
+			_body_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_body_mat.albedo_color.a = 1.0
+
+
 func _apply_colors(tex: Texture2D) -> void:
 	var colors := IconColors.pair(tex, package) if tex != null else [Style.BG_MID, Style.BG_DARK]
 	var vivid: Color = colors[0]
@@ -215,7 +246,9 @@ func _apply_colors(tex: Texture2D) -> void:
 		var white := Color.WHITE
 		white.a = _cover_mat.albedo_color.a
 		_cover_mat.albedo_color = white
-	_body_mat.albedo_color = deep.darkened(0.35)
+	var shell_tint := deep.darkened(0.35)
+	shell_tint.a = _body_mat.albedo_color.a
+	_body_mat.albedo_color = shell_tint
 	_label.modulate = Color(1, 1, 1, 0.95)
 
 

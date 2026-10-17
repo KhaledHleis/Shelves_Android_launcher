@@ -10,6 +10,16 @@ var _on_pick: Callable
 func open_choice(heading: String, options: Array, current: String, on_pick: Callable) -> void:
 	_options = options
 	_on_pick = on_pick
+	# All colours and no words: show them as a small grid of chips instead of
+	# a full-screen list of names.
+	var all_swatches := not options.is_empty()
+	for option in options:
+		if not option.has("swatch"):
+			all_swatches = false
+			break
+	if all_swatches:
+		set_columns(8)
+		set_popup(880, 620)
 	open()
 	set_title(heading)
 	for i in options.size():
@@ -29,6 +39,8 @@ func build_rows() -> Array[Dictionary]:
 		}
 		if option.has("swatch"):
 			row["swatch"] = option["swatch"]
+			if bool(option.get("hide_name", false)):
+				row["text"] = ""
 		out.append(row)
 	return out
 

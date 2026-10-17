@@ -52,6 +52,13 @@ light_color = Color(0.68, 0.78, 1, 1)
 light_energy = 0.45
 shadow_enabled = false
 
+[node name="RimLight" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(-0.5, 0, 0.86603, 0.37157, 0.90259, 0.21452, -0.78172, 0.43051, -0.45131, 0, 0, 0)
+light_color = Color(1, 0.85, 0.95, 1)
+light_energy = 0.75
+light_specular = 1.5
+shadow_enabled = false
+
 [node name="Carousel" type="Node3D" parent="World"]
 script = ExtResource("2_carousel")
 

@@ -8,6 +8,7 @@ signal folder_requested(package: String)
 
 const MODELS := ["box", "cartridge", "disc", "card"]
 const FINISHES := ["opaque", "translucent", "clear", "metallic", "glitter"]
+const SHELLS := ["matte", "glossy", "smoked", "metal", "rubber"]
 
 var package: String = ""
 
@@ -50,7 +51,8 @@ func build_rows() -> Array[Dictionary]:
 		{"id": "name", "text": "Display name",
 			"suffix": Library.display_name(package, "(app label)")},
 		{"id": "model", "text": "Media", "suffix": str(rec.get("model", "box"))},
-		{"id": "finish", "text": "Finish", "suffix": str(rec.get("finish", "opaque"))},
+		{"id": "finish", "text": "Finish (art)", "suffix": str(rec.get("finish", "opaque"))},
+		{"id": "shell", "text": "Material (plastic)", "suffix": str(rec.get("shell", "matte"))},
 		{"id": "background", "text": "Background", "suffix": str(rec.get("background", "auto"))},
 		{"id": "bg_a", "text": "    Colour A", "suffix": str(rec.get("bg_a", "violet")),
 			"swatch": Library.SWATCHES.get(str(rec.get("bg_a", "violet")), Color.WHITE)},
@@ -109,7 +111,7 @@ func on_activate(id: String) -> void:
 		"bg_a", "bg_b":
 			var swatches := []
 			for name in Library.SWATCHES:
-				swatches.append({"id": name, "text": name,
+				swatches.append({"id": name, "text": name, "hide_name": true,
 					"swatch": Library.SWATCHES[name]})
 			choose("Colour", swatches, str(rec.get(id, "")),
 				func(value: String) -> void:
@@ -117,6 +119,13 @@ func on_activate(id: String) -> void:
 					# Picking a colour means you want the custom pair, so stop
 					# making the user set the mode first.
 					Library.set_app_value(package, "background", "custom")
+					_done()
+			)
+			return
+		"shell":
+			choose("Material", SHELLS, str(rec.get("shell", "matte")),
+				func(value: String) -> void:
+					Library.set_app_value(package, "shell", value)
 					_done()
 			)
 			return
@@ -154,6 +163,7 @@ func on_activate(id: String) -> void:
 				Library.set_app_value(package, key, "")
 			Library.set_app_value(package, "model", "box")
 			Library.set_app_value(package, "finish", "opaque")
+			Library.set_app_value(package, "shell", "matte")
 			Library.set_app_value(package, "background", "auto")
 			Library.set_app_value(package, "launch", {})
 			set_title(Library.display_name(package, package))

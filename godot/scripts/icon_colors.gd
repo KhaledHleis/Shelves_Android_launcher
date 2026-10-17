@@ -94,6 +94,9 @@ static func _extract(src: Image) -> Array:
 
 	var vivid := Color.from_hsv(best_a.h, clampf(best_a.s, 0.35, 0.95),
 		clampf(best_a.v, 0.55, 1.0))
-	var deep := Color.from_hsv(best_b.h, clampf(best_b.s, 0.25, 0.9),
-		clampf(best_b.v * 0.45, 0.10, 0.32))
+	# The second colour keeps its own hue and stays bright enough to be seen
+	# as a colour: crushing it to near-black made every background look like
+	# one tinted colour fading into the same darkness.
+	var deep := Color.from_hsv(best_b.h, clampf(best_b.s, 0.40, 0.95),
+		clampf(best_b.v, 0.30, 0.62))
 	return [vivid, deep]

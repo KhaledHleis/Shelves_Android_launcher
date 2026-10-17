@@ -246,8 +246,10 @@ func _tint_background(package: String) -> void:
 	var colors := Library.app_colors(package)
 	# Kept well darker than the cover, so the selected model never sinks into
 	# its own background.
-	var vivid: Color = (colors[0] as Color).darkened(0.62)
-	var deep: Color = (colors[1] as Color).darkened(0.45)
+	# Both ends are pulled down by the same amount, so the gradient reads as
+	# two colours from the art rather than one colour fading into black.
+	var vivid: Color = (colors[0] as Color).darkened(0.48)
+	var deep: Color = (colors[1] as Color).darkened(0.52)
 	var tween := create_tween().set_parallel(true)
 	tween.tween_method(func(c: Color) -> void:
 		_sky_material.set_shader_parameter("color_a", c),
