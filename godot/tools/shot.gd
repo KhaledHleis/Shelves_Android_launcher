@@ -1,13 +1,30 @@
 extends Node
 # Dev helper: load the home screen, let it settle, save a PNG, quit.
 # Run with:  godot --path . tools/shot.tscn   (add --rendering-method gl_compatibility on a PC without Vulkan)
+# Extra args:  -- pad            show controller prompts
+#              -- pad grid       switch the All folder to a grid first
+#              -- pad apps       open the All apps panel
+#              -- pad settings   open Settings
 func _ready() -> void:
-	add_child(load("res://scenes/main.tscn").instantiate())
-	if OS.get_cmdline_user_args().has("pad"):
+	var args := OS.get_cmdline_user_args()
+	if args.has("grid"):
+		Library.set_folder_layout("all", "grid")
+	else:
+		Library.set_folder_layout("all", "carousel")
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	add_child(main)
+	if args.has("pad"):
 		InputMode.using_pad = true
 		InputMode.mode_changed.emit(true)
-	await get_tree().create_timer(2.5).timeout
+	await get_tree().create_timer(1.5).timeout
+	if args.has("apps"):
+		main._all_apps.open()
+	if args.has("settings"):
+		main._settings.open()
+	if args.has("folders"):
+		main._folders.open()
+	await get_tree().create_timer(1.5).timeout
 	get_viewport().get_texture().get_image().save_png("user://shot.png")
-	print("shot saved: ", ProjectSettings.globalize_path("user://shot.png"))
+	print("shot saved")
 	await get_tree().create_timer(0.2).timeout
 	get_tree().quit()

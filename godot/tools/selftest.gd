@@ -7,6 +7,9 @@ var _failures := 0
 
 
 func _ready() -> void:
+	# Start from a clean store: this test files apps into folders and hides
+	# them, and a previous run's leftovers changed the counts it asserts on.
+	Library.reset()
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
@@ -110,6 +113,55 @@ func _ready() -> void:
 	_check(absf(yaw) > 0.01, "and keeps a rotation after wrapping (yaw %.3f)" % yaw)
 
 	Settings.set_value("carousel_autorotate", true)
+
+	# ---- v0.3: folders, filing, hiding
+	var before := Library.folder_count()
+	var fid := Library.create_folder("Emulators", "grid")
+	_check(Library.folder_count() == before + 1, "a custom folder is created")
+	_check(Library.folder_layout(fid) == "grid", "and keeps the layout it was made with")
+
+	var package: String = Library.all_apps()[0]["package"]
+	Library.set_in_folder(package, fid, true)
+	var filed := Library.apps_in_folder(fid)
+	_check(filed.size() == 1 and filed[0]["package"] == package,
+		"filing an app puts it in that folder, got %d" % filed.size())
+	_check(Library.apps_in_folder("all").size() == total,
+		"and leaves All alone, got %d" % Library.apps_in_folder("all").size())
+
+	# Hiding takes an app off every shelf but keeps the record.
+	Library.set_hidden(package, true)
+	_check(Library.apps_in_folder(fid).is_empty(), "hiding takes it out of its folder")
+	_check(Library.apps_in_folder("all").size() == total - 1, "and out of All")
+	_check(Library.hidden_apps().size() == 1, "and it is listed under hidden apps")
+	_check(Library.search("", Library.Sort.NAME).size() == total - 1,
+		"search skips hidden apps")
+	Library.set_hidden(package, false)
+	_check(Library.apps_in_folder(fid).size() == 1, "unhiding puts it back")
+
+	_check(Library.search("bala").size() == 1,
+		"search matches part of a name, got %d" % Library.search("bala").size())
+	_check(not Library.delete_folder("all"), "built-in folders cannot be deleted")
+	_check(Library.delete_folder(fid), "a custom folder can")
+	_check(not Library.in_folder(package, fid),
+		"and deleting it clears the membership it left behind")
+
+	# The grid is the other view of the same folder.
+	var grid_view: GridView = main.get_node("World/GridView")
+	Library.set_folder_layout("all", "grid")
+	main._load_folder(false)
+	await get_tree().process_frame
+	_check(main.view == grid_view, "a folder set to grid opens in the grid view")
+	grid_view.move(-1)
+	_check(grid_view.index == total - 1, "the grid wraps backwards too, got %d" % grid_view.index)
+	grid_view.jump_to(0)
+	grid_view.move_row(-1)
+	_check(grid_view.index == 0, "and a row move off the top stays put")
+	grid_view.move_row(1)
+	_check(grid_view.index == GridView.COLS, "a row down moves a whole row, got %d" % grid_view.index)
+	Library.set_folder_layout("all", "carousel")
+	main._load_folder(false)
+	await get_tree().process_frame
+	_check(main.view == carousel, "and switches back to the carousel")
 
 	# The diagnostics text runs on the device, where a crash in it would be
 	# invisible — exercise the path here.

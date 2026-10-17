@@ -1,4 +1,4 @@
-# Shelves — v0.2 "Fast mode shell"
+# Shelves — v0.3 "Library and folders"
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
@@ -12,11 +12,26 @@ icon) and fixes what breaks on a large Android library.
 Godot 4.7 for everything you see, a small Kotlin plugin for everything that
 needs Android.
 
-This release is the Fast-mode shell from the roadmap: a working 3D carousel
-with the full launcher chrome around it. Folders, All apps and Inspect are
-stubbed with prompts that say which version brings them.
+v0.3 adds the library: custom folders, the All apps screen with search, hiding,
+settings, and a looping grid as an alternative to the carousel for any folder.
+Inspect (per-app customisation) is still stubbed and arrives in v0.4.
 
-## What v0.2 adds on top of v0.1
+## What v0.3 adds on top of v0.2
+
+| Area | v0.3 |
+| --- | --- |
+| Folders | Create, rename, delete, reorder; an app can be in any number of them |
+| Layout per folder | Carousel or looping grid, switched per folder and remembered |
+| All apps | Every launchable app, searchable, with folder filing and hiding |
+| Hide | Hidden apps leave every shelf and are restored from Settings |
+| New | Recently installed and not yet filed — filing an app is what empties it |
+| Settings | Prompt style, A/B swap, sounds and volume, idle animation, clock |
+| Screens | Shared list panel: pad navigation, touch rows, per-screen prompts |
+
+Three v0.2 bugs are fixed: the model changing size after a switch, rotation
+picking up pitch as well as yaw, and the yaw stopping dead at half a turn.
+
+## What v0.2 added on top of v0.1
 
 | Area | v0.2 |
 | --- | --- |
@@ -42,11 +57,13 @@ after touching the screen only wakes the cursor.
 | Action | Controller | Touch |
 | --- | --- | --- |
 | Move selection | D-pad / left stick (hold to repeat) | Swipe anywhere outside the centre model, or tap a side item |
+| Move a row (grid) | D-pad up / down | Swipe |
 | Launch | A | Tap the centre model |
 | Rotate the model | Right stick | Drag on the centre model |
 | Previous / next folder | L1 / R1 | Tap ‹ › in the top bar |
 | Jump 10 at a time | L2 / R2 | — |
 | Inspect / Apps / Settings | X / Y / Start | Tap the prompt |
+| In a list: file into folders / hide | X / Y | Tap the prompt |
 
 On a keyboard: arrows, Enter, Q/E for folders, `[` `]` to jump, X/Y/F1 for the
 three screens.
@@ -143,30 +160,23 @@ lock and the fact that only seven models exist however big the library is.
 MIT — see `LICENSE`. Third-party code and assets are listed in
 `THIRD-PARTY.md`.
 
-## Known bugs
+## Fixed in v0.3
 
-Found testing v0.2 on the device. These come first in v0.3, before new
-features.
+- Model scale changed after a switch: the view and the switch animation were
+  writing the same property. The animation moves the pivot now.
+- Rotation fed pitch as well as yaw, and stopped dead at half a turn. It is
+  yaw only and wraps.
+- No real apps on device: the plugin AAR had never been built, because the
+  repository had no Gradle wrapper despite the README telling you to run
+  `gradlew.bat`. The wrapper is committed, the export plugin says loudly when
+  the AAR is missing, and the launcher shows `MOCK DATA — plugin not loaded`
+  rather than quietly listing apps that do not exist.
 
-- **Model scale differs before and after rotating.** The carousel layout writes
-  the model's scale every frame and the switch animation tweens the same
-  property, so the size that sticks depends on which wrote last. The switch
-  animation should move the pivot inside `MediaItem` instead.
-- **Rotation should be yaw only.** The right stick and the touch drag both feed
-  pitch as well as yaw.
-- **App discovery and launching do not work on the device.** Under
-  investigation. The launcher now says `MOCK DATA — plugin not loaded` on
-  screen and logs an error when the plugin is missing on Android, so the first
-  question is answered at a glance. Two likely causes are already addressed:
-  the Gradle wrapper is now in the repo (`gradlew.bat` did not exist, so the
-  AAR may never have been built), and the `tools:ignore` attribute was removed
-  from the injected manifest, since it needs an `xmlns:tools` declaration that
-  may not be there and a merge failure drops the whole plugin. Still to rule
-  out: the plugin v2 meta-data name, and Android 11 package visibility.
+## Known gaps in v0.3
 
-## Known gaps in v0.2
-
-- Grid layout per folder, custom folders, All apps and Hide are v0.3.
+- Inspect, per-app models, cover art and custom launch actions are v0.4.
+- Slow mode (shelf and open box) is v0.5.
+- Folder membership is set from All apps (X); Inspect will offer it too.
 - The background has the moving gradient but not the texture overlay (v0.6).
 - Finishes, shaders and custom launch actions are v0.4.
 - The Kotlin side is untested against a device from here — the Gradle build has

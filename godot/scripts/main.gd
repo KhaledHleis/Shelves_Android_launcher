@@ -10,6 +10,7 @@ const CENTRE_H := 0.58
 
 @onready var world: Node3D = $World
 @onready var carousel: Carousel = $World/Carousel
+@onready var grid: GridView = $World/GridView
 @onready var env: WorldEnvironment = $World/WorldEnvironment
 @onready var top_bar: TopBar = $UI/TopBar
 @onready var bottom_bar: BottomBar = $UI/BottomBar
@@ -17,6 +18,13 @@ const CENTRE_H := 0.58
 @onready var toast: Label = $UI/Toast
 
 var folder_index: int = 0
+## Whichever of the two views the current folder is set to use.
+var view: Node3D
+
+var _all_apps: AllAppsPanel
+var _folders: FoldersPanel
+var _picker: FolderPickerPanel
+var _settings: SettingsPanel
 
 var _sky_material: ShaderMaterial
 var _press_pos := Vector2.ZERO
@@ -43,13 +51,45 @@ func _ready() -> void:
 	elif AppBridge.plugin_returned_nothing():
 		_show_badge("Plugin loaded but returned no apps (tap for details)")
 
-	carousel.selection_changed.connect(_on_selection_changed)
+	view = carousel
+	for v in [carousel, grid]:
+		v.selection_changed.connect(_on_selection_changed)
+	_build_panels()
 	top_bar.folder_tapped.connect(func(step: int) -> void: switch_folder(step))
 	bottom_bar.prompt_activated.connect(_on_prompt)
 	Library.library_changed.connect(_on_library_changed)
+	Library.folders_changed.connect(_on_library_changed)
 	AppBridge.icon_ready.connect(_on_icon_ready)
 
 	_on_library_changed()
+
+
+func _build_panels() -> void:
+	_all_apps = AllAppsPanel.new()
+	_folders = FoldersPanel.new()
+	_picker = FolderPickerPanel.new()
+	_settings = SettingsPanel.new()
+	for panel in [_all_apps, _folders, _picker, _settings]:
+		$Overlay.add_child(panel)
+
+	_all_apps.folder_requested.connect(func(package: String) -> void:
+		_picker.open_for(package)
+	)
+	_settings.open_folders.connect(func() -> void: _folders.open())
+	_settings.open_hidden.connect(func() -> void:
+		_all_apps.show_hidden = true
+		_all_apps.open()
+	)
+	_all_apps.closed.connect(func() -> void: _all_apps.show_hidden = false)
+
+
+## True while any panel is up — the home screen stops reading input then, so
+## a press cannot move the shelf behind an open list.
+func panel_open() -> bool:
+	for panel in [_all_apps, _folders, _picker, _settings]:
+		if panel != null and panel.is_open:
+			return true
+	return false
 
 
 func _notification(what: int) -> void:
@@ -69,7 +109,7 @@ func _on_library_changed() -> void:
 
 func switch_folder(step: int) -> void:
 	var count := Library.folder_count()
-	if count <= 1 or carousel.locked:
+	if count <= 1 or view.locked:
 		return
 	folder_index = wrapi(folder_index + step, 0, count)
 	Audio.play("folder")
@@ -82,9 +122,20 @@ func _load_folder(keep_selection: bool) -> void:
 	if folder.is_empty():
 		return
 	var keep := ""
-	if keep_selection:
-		keep = str(carousel.current().get("package", ""))
-	carousel.set_items(Library.apps_in_folder(str(folder["id"])), keep)
+	if keep_selection and view != null:
+		keep = str(view.current().get("package", ""))
+
+	# Each folder remembers whether it is a carousel or a grid.
+	var wanted: Node3D = grid if str(folder.get("layout", "carousel")) == "grid" else carousel
+	if wanted != view:
+		view.visible = false
+		view.set_items([] as Array[Dictionary])
+		view = wanted
+		view.visible = true
+	view.set_items(Library.apps_in_folder(str(folder["id"])), keep)
+	# The grid prints every name on its own box, so the big centred title
+	# underneath is just something for the bottom row to collide with.
+	title.visible = view == carousel
 
 
 # ---------------------------------------------------------------- selection
@@ -96,7 +147,7 @@ func _on_selection_changed(index: int, total: int, package: String, name: String
 
 
 func _on_icon_ready(package: String, _tex: Texture2D) -> void:
-	if package == str(carousel.current().get("package", "")):
+	if view != null and package == str(view.current().get("package", "")):
 		_tint_background(package)
 
 
@@ -123,6 +174,8 @@ func _tint_background(package: String) -> void:
 # ---------------------------------------------------------------- input
 
 func _unhandled_input(event: InputEvent) -> void:
+	if panel_open():
+		return
 	if event is InputEventScreenTouch:
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
@@ -146,11 +199,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(_delta: float) -> void:
-	if carousel.locked:
+	if view.locked or panel_open():
 		return
 	if InputMode.accept_just_pressed():
 		if not InputMode.consume_wake():
-			carousel.launch_selected()
+			view.launch_selected()
 	elif Input.is_action_just_pressed("folder_prev"):
 		if not InputMode.consume_wake():
 			switch_folder(-1)
@@ -158,15 +211,19 @@ func _process(_delta: float) -> void:
 		if not InputMode.consume_wake():
 			switch_folder(1)
 	elif Input.is_action_just_pressed("page_prev"):
-		carousel.jump_to(carousel.index - Carousel.PAGE_JUMP)
+		view.jump_to(view.index - _page_jump())
 	elif Input.is_action_just_pressed("page_next"):
-		carousel.jump_to(carousel.index + Carousel.PAGE_JUMP)
+		view.jump_to(view.index + _page_jump())
 	elif Input.is_action_just_pressed("inspect"):
 		_on_prompt("inspect")
 	elif Input.is_action_just_pressed("all_apps"):
 		_on_prompt("all_apps")
 	elif Input.is_action_just_pressed("launcher_settings"):
 		_on_prompt("settings")
+
+
+func _page_jump() -> int:
+	return GridView.PAGE_JUMP if view == grid else Carousel.PAGE_JUMP
 
 
 func _pointer_down(pos: Vector2) -> void:
@@ -179,15 +236,15 @@ func _pointer_down(pos: Vector2) -> void:
 
 
 func _pointer_drag(relative: Vector2) -> void:
-	if not _dragging or carousel.locked:
+	if not _dragging or view.locked:
 		return
 	_moved += relative.length()
 	if _rotating:
-		carousel.rotate_center(relative)
+		view.rotate_center(relative)
 		return
 	_drag_accum -= relative.x
 	while absf(_drag_accum) >= SWIPE_STEP:
-		carousel.move(signi(int(_drag_accum)))
+		view.move(signi(int(_drag_accum)))
 		_drag_accum -= signf(_drag_accum) * SWIPE_STEP
 
 
@@ -200,11 +257,11 @@ func _pointer_up(pos: Vector2) -> void:
 	if _moved > TAP_SLOP or held > TAP_TIME:
 		return
 	if _centre_rect().has_point(pos):
-		carousel.launch_selected()
+		view.launch_selected()
 	elif pos.x < _centre_rect().position.x:
-		carousel.move(-1)
+		view.move(-1)
 	elif pos.x > _centre_rect().end.x:
-		carousel.move(1)
+		view.move(1)
 
 
 func _centre_rect() -> Rect2:
@@ -219,11 +276,11 @@ func _centre_rect() -> Rect2:
 func _on_prompt(id: String) -> void:
 	match id:
 		"launch":
-			carousel.launch_selected()
+			view.launch_selected()
 		"settings":
-			show_toast("Launcher settings arrive in v0.3")
+			_settings.open()
 		"all_apps":
-			show_toast("All apps arrives in v0.3")
+			_all_apps.open()
 		"inspect":
 			show_toast("Inspect arrives in v0.4")
 		_:

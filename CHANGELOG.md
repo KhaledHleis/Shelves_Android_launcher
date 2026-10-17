@@ -3,6 +3,22 @@
 Versions follow the roadmap in the design document. Each one ends with a
 working APK.
 
+## v0.3 — Library and folders
+
+- Custom folders: create, rename, delete, reorder; an app can be in several.
+- Per-folder layout: carousel or a looping grid, remembered per folder.
+- All apps screen: search, folder filing, hiding, launching.
+- Hidden apps leave every shelf and are restored from Settings.
+- New folder means recently installed and not yet filed, so filing an app is
+  what takes it out.
+- Settings screen: prompt style, A/B swap, sounds and volume, idle animation,
+  clock format, folder management, hidden apps, plugin diagnostics.
+- Shared list panel behind all four screens, with pad repeat, touch rows and
+  per-screen prompts.
+- Fixed: the model changing size after a switch, rotation picking up pitch,
+  yaw stopping at half a turn, manual folders never matching any app, and the
+  self-test inheriting the previous run's saved library.
+
 ## v0.2 — Fast mode shell
 
 Named Shelves. The Android package is `com.khaled.shelves`; a device running

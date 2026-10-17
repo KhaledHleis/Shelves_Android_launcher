@@ -1,7 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/carousel.gd" id="2_carousel"]
+[ext_resource type="Script" path="res://scripts/grid_view.gd" id="6_grid"]
 [ext_resource type="Script" path="res://scripts/top_bar.gd" id="3_top_bar"]
 [ext_resource type="Script" path="res://scripts/bottom_bar.gd" id="4_bottom_bar"]
 [ext_resource type="Shader" path="res://shaders/sky_gradient.gdshader" id="5_sky"]
@@ -53,7 +54,14 @@ shadow_enabled = false
 [node name="Carousel" type="Node3D" parent="World"]
 script = ExtResource("2_carousel")
 
+[node name="GridView" type="Node3D" parent="World"]
+visible = false
+script = ExtResource("6_grid")
+
 [node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Overlay" type="CanvasLayer" parent="."]
+layer = 2
 
 [node name="TopBar" type="Control" parent="UI"]
 anchors_preset = 10

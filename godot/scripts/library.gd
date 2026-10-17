@@ -7,16 +7,15 @@ extends Node
 ## so adding them later does not migrate anything.
 
 signal library_changed       ## app list or folder contents changed
+signal folders_changed       ## a folder was added, removed, renamed or moved
 
 const PATH := "user://library.json"
-const VERSION := 1
+const VERSION := 2
+
+enum Sort { NAME, RECENT }
 const NEW_WINDOW_DAYS := 14
 
-var _data: Dictionary = {
-	"version": VERSION,
-	"folders": [],
-	"apps": {},
-}
+var _data: Dictionary = {"version": VERSION, "folders": [], "apps": {}}
 var _apps: Array[Dictionary] = []          ## live list from AppBridge, sorted A→Z
 var _by_folder: Dictionary = {}            ## folder id -> Array[Dictionary]
 var _first_run: bool = false
@@ -46,6 +45,99 @@ func folder_at(index: int) -> Dictionary:
 	return list[clampi(index, 0, list.size() - 1)]
 
 
+func folder_by_id(id: String) -> Dictionary:
+	for folder in _data["folders"]:
+		if folder["id"] == id:
+			return folder
+	return {}
+
+
+func folder_index(id: String) -> int:
+	var list: Array = _data["folders"]
+	for i in list.size():
+		if list[i]["id"] == id:
+			return i
+	return -1
+
+
+## Manual folders only — the ones an app can actually be filed into.
+func custom_folders() -> Array:
+	var out := []
+	for folder in _data["folders"]:
+		if str(folder.get("rule", "manual")) == "manual":
+			out.append(folder)
+	return out
+
+
+func create_folder(name: String, layout: String = "carousel") -> String:
+	var clean := name.strip_edges()
+	if clean.is_empty():
+		clean = "Folder"
+	var id := "f_%d" % (Time.get_ticks_usec() % 100000000)
+	_data["folders"].append({
+		"id": id, "name": clean, "rule": "manual", "layout": layout, "builtin": false,
+	})
+	save()
+	_rebuild_folders(int(Time.get_unix_time_from_system()))
+	folders_changed.emit()
+	library_changed.emit()
+	return id
+
+
+func rename_folder(id: String, name: String) -> void:
+	var folder := folder_by_id(id)
+	var clean := name.strip_edges()
+	if folder.is_empty() or clean.is_empty():
+		return
+	folder["name"] = clean
+	save()
+	folders_changed.emit()
+
+
+## Built-in folders stay. A deleted folder's membership is dropped from every
+## app, so no record points at an id that no longer exists.
+func delete_folder(id: String) -> bool:
+	var folder := folder_by_id(id)
+	if folder.is_empty() or bool(folder.get("builtin", false)):
+		return false
+	(_data["folders"] as Array).erase(folder)
+	for package in (_data["apps"] as Dictionary):
+		var list: Array = _data["apps"][package].get("folders", [])
+		list.erase(id)
+	save()
+	_rebuild_folders(int(Time.get_unix_time_from_system()))
+	folders_changed.emit()
+	library_changed.emit()
+	return true
+
+
+func move_folder(id: String, delta: int) -> void:
+	var list: Array = _data["folders"]
+	var from := folder_index(id)
+	var to := from + delta
+	if from < 0 or to < 0 or to >= list.size():
+		return
+	var folder: Variant = list[from]
+	list.remove_at(from)
+	list.insert(to, folder)
+	save()
+	folders_changed.emit()
+
+
+func folder_layout(id: String) -> String:
+	var folder := folder_by_id(id)
+	return str(folder.get("layout", "carousel")) if not folder.is_empty() else "carousel"
+
+
+func set_folder_layout(id: String, layout: String) -> void:
+	var folder := folder_by_id(id)
+	if folder.is_empty():
+		return
+	folder["layout"] = layout
+	save()
+	folders_changed.emit()
+
+
 func apps_in_folder(folder_id: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	out.assign(_by_folder.get(folder_id, []))
@@ -54,6 +146,62 @@ func apps_in_folder(folder_id: String) -> Array[Dictionary]:
 
 func all_apps() -> Array[Dictionary]:
 	return _apps
+
+
+## Visible apps, filtered and sorted — what the All apps panel shows.
+func search(query: String = "", sort: Sort = Sort.NAME,
+		include_hidden: bool = false) -> Array[Dictionary]:
+	var needle := query.strip_edges().to_lower()
+	var out: Array[Dictionary] = []
+	for app in _apps:
+		var package: String = app["package"]
+		if is_hidden(package) and not include_hidden:
+			continue
+		var label := display_name(package, app["name"])
+		if not needle.is_empty() and not label.to_lower().contains(needle):
+			continue
+		out.append({"package": package, "name": label})
+	if sort == Sort.RECENT:
+		out.sort_custom(func(a, b): return _first_seen(a["package"]) > _first_seen(b["package"]))
+	else:
+		out.sort_custom(func(a, b): return a["name"].naturalnocasecmp_to(b["name"]) < 0)
+	return out
+
+
+func hidden_apps() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for app in _apps:
+		if is_hidden(app["package"]):
+			out.append({
+				"package": app["package"],
+				"name": display_name(app["package"], app["name"]),
+			})
+	return out
+
+
+func in_folder(package: String, folder_id: String) -> bool:
+	return folder_id in record(package).get("folders", [])
+
+
+func set_in_folder(package: String, folder_id: String, member: bool) -> void:
+	var list: Array = record(package)["folders"]
+	if member and folder_id not in list:
+		list.append(folder_id)
+	elif not member:
+		list.erase(folder_id)
+	save()
+	_rebuild_folders(int(Time.get_unix_time_from_system()))
+	library_changed.emit()
+
+
+func toggle_in_folder(package: String, folder_id: String) -> bool:
+	var member := not in_folder(package, folder_id)
+	set_in_folder(package, folder_id, member)
+	return member
+
+
+func _first_seen(package: String) -> int:
+	return int(record(package).get("first_seen", 0))
 
 
 func record(package: String) -> Dictionary:
@@ -76,10 +224,22 @@ func is_hidden(package: String) -> bool:
 func set_hidden(package: String, hidden: bool) -> void:
 	record(package)["hidden"] = hidden
 	save()
-	refresh()
+	_rebuild_folders(int(Time.get_unix_time_from_system()))
+	library_changed.emit()
 
 
 # ---------------------------------------------------------------- refresh
+
+## Throws away folders and per-app records and starts from the defaults.
+## Used by tools/selftest.tscn so a run does not inherit the last one's
+## folders — the tests were passing or failing depending on what was left in
+## user://library.json.
+func reset() -> void:
+	_data = {"version": VERSION, "folders": _default_folders(), "apps": {}}
+	_first_run = true
+	refresh()
+	folders_changed.emit()
+
 
 func refresh() -> void:
 	_apps = AppBridge.get_installed_apps()
@@ -124,9 +284,14 @@ func _rebuild_folders(now: int) -> void:
 				"all":
 					keep = true
 				"new":
-					keep = int(record(package).get("first_seen", 0)) >= new_cutoff
+					# Recently installed and not filed anywhere yet — filing an
+					# app into a folder is what takes it out of New.
+					keep = _first_seen(package) >= new_cutoff \
+						and (record(package).get("folders", []) as Array).is_empty()
 				_:
-					keep = package in record(package).get("folders", [])
+					# Was comparing the package against the folder list, so a
+					# manual folder could never match anything.
+					keep = id in record(package).get("folders", [])
 			if keep:
 				bucket.append({
 					"package": package,
@@ -142,7 +307,7 @@ func _new_record() -> Dictionary:
 		"display_name": "",
 		"hidden": false,
 		"first_seen": 0,
-		"folders": [],          # custom folder ids — v0.3
+		"folders": [],          # manual folder ids
 		"model": "box",         # v0.4
 		"launch": {},           # custom launch action — v0.4
 	}
@@ -150,8 +315,8 @@ func _new_record() -> Dictionary:
 
 func _default_folders() -> Array:
 	return [
-		{"id": "all", "name": "All", "rule": "all", "layout": "carousel"},
-		{"id": "new", "name": "New", "rule": "new", "layout": "carousel"},
+		{"id": "all", "name": "All", "rule": "all", "layout": "carousel", "builtin": true},
+		{"id": "new", "name": "New", "rule": "new", "layout": "carousel", "builtin": true},
 	]
 
 
@@ -167,13 +332,20 @@ func _load() -> void:
 		return
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	f.close()
-	if parsed is Dictionary:
-		_data["apps"] = parsed.get("apps", {})
-		var folders: Array = parsed.get("folders", [])
-		_data["folders"] = folders if not folders.is_empty() else _default_folders()
-	else:
+	if not parsed is Dictionary:
 		push_warning("library: %s is not valid JSON, starting fresh" % PATH)
 		_data["folders"] = _default_folders()
+		return
+
+	_data["apps"] = parsed.get("apps", {})
+	var folders: Array = parsed.get("folders", [])
+	_data["folders"] = folders if not folders.is_empty() else _default_folders()
+	# v1 files had no builtin flag: All and New must stay undeletable.
+	for folder in _data["folders"]:
+		if not folder.has("builtin"):
+			folder["builtin"] = str(folder.get("rule", "manual")) in ["all", "new"]
+		if not folder.has("layout"):
+			folder["layout"] = "carousel"
 
 
 func save() -> void:
