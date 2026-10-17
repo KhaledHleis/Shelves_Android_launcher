@@ -1,0 +1,10 @@
+godot/.godot/
+godot/addons/socket_launcher/bin/*/*.aar
+godot/android/
+android-plugin/.gradle/
+android-plugin/build/
+android-plugin/plugin/build/
+android-plugin/local.properties
+android-plugin/.idea/
+*.apk
+*.aab

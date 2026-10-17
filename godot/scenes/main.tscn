@@ -1,0 +1,102 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/carousel.gd" id="2_carousel"]
+[ext_resource type="Script" path="res://scripts/top_bar.gd" id="3_top_bar"]
+[ext_resource type="Script" path="res://scripts/bottom_bar.gd" id="4_bottom_bar"]
+[ext_resource type="Shader" path="res://shaders/sky_gradient.gdshader" id="5_sky"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
+shader = ExtResource("5_sky")
+shader_parameter/color_a = Color(0.18, 0.14, 0.3, 1)
+shader_parameter/color_b = Color(0.04, 0.05, 0.09, 1)
+shader_parameter/speed = 0.05
+shader_parameter/grain = 0.015
+
+[sub_resource type="Sky" id="Sky_bg"]
+sky_material = SubResource("ShaderMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_bg")
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.65, 0.78, 1)
+ambient_light_energy = 0.55
+tonemap_mode = 2
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="World"]
+environment = SubResource("Environment_main")
+
+[node name="Camera3D" type="Camera3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.75)
+fov = 50.0
+near = 0.05
+far = 20.0
+
+[node name="KeyLight" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(0.88295, 0, 0.46947, 0.24878, 0.84805, -0.46789, -0.39813, 0.52992, 0.74878, 0, 0, 0)
+light_color = Color(1, 0.96, 0.92, 1)
+light_energy = 1.15
+shadow_enabled = false
+
+[node name="FillLight" type="DirectionalLight3D" parent="World"]
+transform = Transform3D(-0.86603, 0, -0.5, -0.10396, 0.97815, 0.18006, 0.48907, 0.20791, -0.8471, 0, 0, 0)
+light_color = Color(0.68, 0.78, 1, 1)
+light_energy = 0.45
+shadow_enabled = false
+
+[node name="Carousel" type="Node3D" parent="World"]
+script = ExtResource("2_carousel")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="Control" parent="UI"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 92.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("3_top_bar")
+
+[node name="Title" type="Label" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -242.0
+offset_bottom = -162.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+clip_text = true
+
+[node name="Toast" type="Label" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -158.0
+offset_bottom = -108.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomBar" type="Control" parent="UI"]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -92.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("4_bottom_bar")

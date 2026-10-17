@@ -1,0 +1,186 @@
+class_name MediaItem
+extends Node3D
+## One piece of 3D media — in v0.2 always the generic game case.
+##
+## The carousel owns where an item sits; the item owns how it looks and how it
+## moves in place (idle sway, user rotation, the insert animation).
+
+const SWAY_SPEED := 0.9
+const SWAY_AMOUNT := 0.055
+const ROTATE_RETURN_DELAY := 2.5
+const ROTATE_RETURN_SPEED := 3.0
+
+var package: String = ""
+var title: String = ""
+var item_index: int = -1
+var is_center: bool = false
+
+var _pivot: Node3D
+var _box: MeshInstance3D
+var _icon: MeshInstance3D
+var _label: Label3D
+var _cover_mat: StandardMaterial3D
+var _body_mat: StandardMaterial3D
+var _icon_mat: StandardMaterial3D
+
+var _user_rot := Vector2.ZERO          ## yaw, pitch added by the right stick
+var _idle_since := 0.0
+var _phase := 0.0
+var _locked := false                   ## true during the insert animation
+
+
+func _init() -> void:
+	_pivot = Node3D.new()
+	_pivot.name = "Pivot"
+	add_child(_pivot)
+
+	_cover_mat = StandardMaterial3D.new()
+	_cover_mat.roughness = 0.42
+	_cover_mat.metallic = 0.05
+	_body_mat = StandardMaterial3D.new()
+	_body_mat.roughness = 0.6
+
+	_box = MeshInstance3D.new()
+	_box.name = "Box"
+	_box.mesh = BoxMediaMesh.get_mesh()
+	_box.set_surface_override_material(0, _cover_mat)
+	_box.set_surface_override_material(1, _body_mat)
+	_pivot.add_child(_box)
+
+	_icon_mat = StandardMaterial3D.new()
+	_icon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_icon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	_icon_mat.roughness = 0.5
+	_icon_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.22, 0.22)
+	_icon = MeshInstance3D.new()
+	_icon.name = "Icon"
+	_icon.mesh = quad
+	_icon.material_override = _icon_mat
+	_icon.position = Vector3(0, 0.08, BoxMediaMesh.DEPTH * 0.5 + 0.002)
+	_pivot.add_child(_icon)
+
+	_label = Label3D.new()
+	_label.name = "Title"
+	_label.font_size = 48
+	_label.pixel_size = 0.0013
+	_label.width = 300.0
+	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_label.position = Vector3(0, -0.15, BoxMediaMesh.DEPTH * 0.5 + 0.003)
+	_label.modulate = Color(1, 1, 1, 0.95)
+	_label.outline_size = 0
+	_pivot.add_child(_label)
+
+	_phase = randf() * TAU
+
+
+func _process(delta: float) -> void:
+	if _locked:
+		return
+	_phase += delta * SWAY_SPEED
+	_idle_since += delta
+
+	var sway := Vector3.ZERO
+	if is_center and bool(Settings.get_value("carousel_autorotate")):
+		sway = Vector3(sin(_phase * 0.7) * SWAY_AMOUNT * 0.4, sin(_phase) * SWAY_AMOUNT, 0.0)
+
+	if _idle_since > ROTATE_RETURN_DELAY and _user_rot.length() > 0.001:
+		_user_rot = _user_rot.lerp(Vector2.ZERO, clampf(delta * ROTATE_RETURN_SPEED, 0, 1))
+
+	_pivot.rotation = Vector3(sway.x - _user_rot.y, sway.y + _user_rot.x, 0.0)
+
+
+# ---------------------------------------------------------------- content
+
+func set_item(index: int, package_name: String, label: String) -> void:
+	if item_index == index and package == package_name:
+		return
+	item_index = index
+	package = package_name
+	title = label
+	_label.text = label
+	_user_rot = Vector2.ZERO
+	_apply_colors(null)
+	var tex := AppBridge.get_icon(package)
+	if tex != null:
+		apply_icon(tex)
+	else:
+		_icon_mat.albedo_texture = null
+
+
+func apply_icon(tex: Texture2D) -> void:
+	_icon_mat.albedo_texture = tex
+	_apply_colors(tex)
+
+
+func _apply_colors(tex: Texture2D) -> void:
+	var colors := IconColors.pair(tex, package) if tex != null else [Style.BG_MID, Style.BG_DARK]
+	var vivid: Color = colors[0]
+	var deep: Color = colors[1]
+	_cover_mat.albedo_color = deep.lerp(vivid, 0.55)
+	_body_mat.albedo_color = deep.darkened(0.35)
+	_label.modulate = Color(1, 1, 1, 0.95)
+
+
+## Two dominant colours of the current item, for the background gradient.
+func colors() -> Array:
+	var tex := AppBridge.get_icon(package)
+	return IconColors.pair(tex, package) if tex != null else [Style.ACCENT, Style.BG_MID]
+
+
+# ---------------------------------------------------------------- input
+
+## Adds right-stick / drag rotation. Yaw in radians.
+func add_rotation(yaw: float, pitch: float) -> void:
+	if _locked:
+		return
+	_user_rot.x = clampf(_user_rot.x + yaw, -PI, PI)
+	_user_rot.y = clampf(_user_rot.y + pitch, -0.8, 0.8)
+	_idle_since = 0.0
+
+
+func reset_rotation() -> void:
+	_user_rot = Vector2.ZERO
+	_idle_since = 0.0
+
+
+# ---------------------------------------------------------------- animation
+
+## Plays when the selection lands on this item.
+func play_switch() -> void:
+	if _locked:
+		return
+	scale = Vector3.ONE * 0.92
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(self, "scale", Vector3.ONE, 0.45)
+
+
+## Cartridge-into-the-slot animation. Returns the tween so the caller can wait
+## on it before launching.
+func play_insert() -> Tween:
+	_locked = true
+	var start := _pivot.position
+	var tween := create_tween()
+	tween.set_parallel(false)
+	# settle upright
+	tween.tween_property(_pivot, "rotation", Vector3.ZERO, 0.12)
+	# small pull back, then push in
+	tween.tween_property(_pivot, "position", start + Vector3(0, 0.04, 0.12), 0.14) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(_pivot, "scale", Vector3(1.06, 0.94, 1.0), 0.10)
+	tween.parallel().tween_property(_pivot, "position", start + Vector3(0, -0.05, -0.9), 0.26) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_property(_pivot, "scale", Vector3(0.9, 1.08, 1.0), 0.08)
+	return tween
+
+
+func reset_after_insert() -> void:
+	_locked = false
+	_pivot.position = Vector3.ZERO
+	_pivot.scale = Vector3.ONE
+	_pivot.rotation = Vector3.ZERO
+	_user_rot = Vector2.ZERO

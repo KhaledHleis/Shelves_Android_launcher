@@ -1,0 +1,14 @@
+# Normalise line endings — the project is edited on Windows and built on Linux CI.
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.aar binary
+*.jar binary
+*.apk binary
+*.glb binary

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+	<application>
+		<!-- How Godot 4 discovers a v2 plugin: the meta-data name is
+		     org.godotengine.plugin.v2.<plugin name>, the value is the class. -->
+		<meta-data
+			android:name="org.godotengine.plugin.v2.LauncherPlugin"
+			android:value="com.khaled.socketlauncher.LauncherPlugin" />
+	</application>
+</manifest>
