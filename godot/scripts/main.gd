@@ -39,7 +39,9 @@ func _ready() -> void:
 	toast.modulate.a = 0.0
 
 	if not AppBridge.has_plugin:
-		_show_mock_badge()
+		_show_badge("MOCK DATA — plugin not loaded (tap for details)")
+	elif AppBridge.plugin_returned_nothing():
+		_show_badge("Plugin loaded but returned no apps (tap for details)")
 
 	carousel.selection_changed.connect(_on_selection_changed)
 	top_bar.folder_tapped.connect(func(step: int) -> void: switch_folder(step))
@@ -230,22 +232,30 @@ func _on_prompt(id: String) -> void:
 
 ## A list of apps that do not exist is worse than an empty screen, because it
 ## looks like it works. Say it on screen, not only in the log.
-func _show_mock_badge() -> void:
+func _show_badge(text: String) -> void:
 	var badge := Label.new()
 	badge.name = "MockBadge"
-	badge.text = "MOCK DATA — plugin not loaded"
+	badge.text = text
 	badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	badge.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	badge.offset_top = Style.BAR_HEIGHT + 12
 	badge.add_theme_font_size_override("font_size", Style.FONT_SMALL)
 	badge.add_theme_color_override("font_color", Style.WARN)
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.mouse_filter = Control.MOUSE_FILTER_STOP
+	badge.gui_input.connect(func(event: InputEvent) -> void:
+		var tapped := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
+			or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
+		if tapped:
+			print(AppBridge.diagnostics())
+			show_toast(AppBridge.diagnostics())
+	)
 	$UI.add_child(badge)
 
 
 func show_toast(text: String) -> void:
 	Audio.play("back")
 	toast.text = text
+	toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if _toast_tween != null and _toast_tween.is_valid():
 		_toast_tween.kill()
 	toast.modulate.a = 0.0

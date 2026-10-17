@@ -96,7 +96,26 @@ func _ready() -> void:
 	_check(is_zero_approx(pivot.rotation.x),
 		"rotating leaves pitch alone (pitch %.3f)" % pivot.rotation.x)
 	_check(absf(pivot.rotation.y) > 0.1, "and does turn the case (yaw %.3f)" % pivot.rotation.y)
+
+	# Spinning past half a turn must keep going. 8.4 radians is a turn and a
+	# third: clamped it would sit at exactly PI, wrapped it lands short of it.
+	var item: MediaItem = carousel.center_node()
+	item.reset_rotation()
+	for i in 24:
+		item.add_rotation(0.35)
+	await get_tree().process_frame
+	var yaw: float = pivot.rotation.y
+	_check(absf(yaw) < PI - 0.01,
+		"the model spins past half a turn instead of stopping at the clamp (yaw %.3f)" % yaw)
+	_check(absf(yaw) > 0.01, "and keeps a rotation after wrapping (yaw %.3f)" % yaw)
+
 	Settings.set_value("carousel_autorotate", true)
+
+	# The diagnostics text runs on the device, where a crash in it would be
+	# invisible — exercise the path here.
+	var diag := AppBridge.diagnostics()
+	_check(diag.contains("serving:") and diag.length() > 40,
+		"diagnostics text builds (%d chars)" % diag.length())
 
 	carousel.launch_selected()
 	_check(carousel.locked, "launching locks input until the animation ends")

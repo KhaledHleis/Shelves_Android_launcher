@@ -45,6 +45,45 @@ func _ready() -> void:
 			push_warning("LauncherPlugin not found — running with mock apps.")
 	_refresh_battery(true)
 	_refresh_network(true)
+	if OS.get_name() == "Android":
+		print(diagnostics())
+
+
+## One block of text that says exactly where the Android side stopped. Printed
+## at startup on a device and shown by tapping the mock-data badge, because
+## "no apps" has several causes that look identical on screen.
+func diagnostics() -> String:
+	var lines := ["--- Shelves plugin diagnostics ---"]
+	lines.append("os: %s %s" % [OS.get_name(), OS.get_model_name()])
+	lines.append("singleton present: %s" % str(Engine.has_singleton(PLUGIN_NAME)))
+	var names: Array[String] = []
+	for singleton in Engine.get_singleton_list():
+		var name := str(singleton)
+		if not name.begins_with("Godot") and name not in ["Engine", "OS", "Input"]:
+			names.append(name)
+	lines.append("singletons loaded: %s" % ", ".join(names))
+	if _plugin != null:
+		var raw := ""
+		var failed := ""
+		# A plugin that loads but answers nothing is a different bug from one
+		# that never loaded: usually package visibility on Android 11+.
+		if _plugin.has_method("getInstalledApps"):
+			raw = str(_plugin.getInstalledApps())
+		else:
+			failed = "getInstalledApps missing from the plugin"
+		lines.append("raw reply: %d chars" % raw.length())
+		var parsed: Variant = JSON.parse_string(raw) if not raw.is_empty() else null
+		if parsed is Array:
+			lines.append("apps parsed: %d" % (parsed as Array).size())
+		elif not raw.is_empty():
+			lines.append("apps parsed: reply is not a JSON array")
+		if not failed.is_empty():
+			lines.append(failed)
+	else:
+		lines.append("plugin object: null — the AAR is not in the APK, or the")
+		lines.append("  plugin v2 meta-data name does not match getPluginName()")
+	lines.append("serving: %s" % ("device apps" if has_plugin else "MOCK apps"))
+	return "\n".join(lines)
 
 
 func _process(delta: float) -> void:
@@ -57,6 +96,12 @@ func _process(delta: float) -> void:
 
 
 # ---------------------------------------------------------------- apps
+
+## True when the plugin loaded but handed back nothing — a different failure
+## from the plugin being absent, and the one package visibility causes.
+func plugin_returned_nothing() -> bool:
+	return has_plugin and get_installed_apps().is_empty()
+
 
 ## Returns [{package, name, launchable}] sorted A→Z.
 func get_installed_apps() -> Array[Dictionary]:

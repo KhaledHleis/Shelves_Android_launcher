@@ -139,7 +139,10 @@ func colors() -> Array:
 func add_rotation(yaw: float) -> void:
 	if _locked:
 		return
-	_user_yaw = clampf(_user_yaw + yaw, -PI, PI)
+	# Wrap, never clamp: clamping stopped the case dead at half a turn, so it
+	# could not be spun right round. Wrapping also means the spring back to
+	# rest always takes the short way.
+	_user_yaw = wrapf(_user_yaw + yaw, -PI, PI)
 	_idle_since = 0.0
 
 
