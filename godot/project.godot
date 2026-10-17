@@ -1,5 +1,10 @@
 ; Engine configuration file.
-; Shelves Launcher — v0.2 "Fast mode shell"
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -11,9 +16,9 @@ config/version="0.2.0"
 run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "Mobile")
-config/icon="res://icon.svg"
-boot_splash/show_image=false
 boot_splash/bg_color=Color(0.054, 0.058, 0.082, 1)
+boot_splash/show_image=false
+config/icon="res://icon.svg"
 
 [autoload]
 
@@ -31,7 +36,6 @@ window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
-window/vsync/vsync_mode=1
 
 [editor_plugins]
 
