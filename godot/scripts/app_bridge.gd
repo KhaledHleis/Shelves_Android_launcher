@@ -34,7 +34,15 @@ func _ready() -> void:
 			_plugin.connect("apps_changed", _on_plugin_apps_changed)
 	else:
 		_build_mock_apps()
-		push_warning("LauncherPlugin not found — running with mock apps.")
+		if OS.get_name() == "Android":
+			# On a device this is a real failure, not the desktop fallback: the
+			# AAR is missing from the export, or the plugin v2 meta-data name
+			# does not match getPluginName().
+			push_error("LauncherPlugin NOT LOADED on Android — showing mock apps. "
+				+ "Check that addons/shelves/bin/<variant>/LauncherPlugin-<variant>.aar "
+				+ "exists and was built by android-plugin/gradlew assemble.")
+		else:
+			push_warning("LauncherPlugin not found — running with mock apps.")
 	_refresh_battery(true)
 	_refresh_network(true)
 

@@ -202,20 +202,13 @@ func _handle_stick(delta: float) -> void:
 	if node == null or not node.visible:
 		return
 	var rx := 0.0
-	var ry := 0.0
 	for device in Input.get_connected_joypads():
 		var ax := Input.get_joy_axis(device, JOY_AXIS_RIGHT_X)
-		var ay := Input.get_joy_axis(device, JOY_AXIS_RIGHT_Y)
 		if absf(ax) > absf(rx):
 			rx = ax
-		if absf(ay) > absf(ry):
-			ry = ay
 	if absf(rx) < STICK_DEADZONE:
-		rx = 0.0
-	if absf(ry) < STICK_DEADZONE:
-		ry = 0.0
-	if rx != 0.0 or ry != 0.0:
-		node.add_rotation(rx * STICK_SPEED * delta, ry * STICK_SPEED * delta)
+		return
+	node.add_rotation(rx * STICK_SPEED * delta)
 
 
 # ---------------------------------------------------------------- touch
@@ -224,7 +217,7 @@ func _handle_stick(delta: float) -> void:
 func rotate_center(drag: Vector2) -> void:
 	if locked:
 		return
-	center_node().add_rotation(drag.x * 0.008, drag.y * 0.006)
+	center_node().add_rotation(drag.x * 0.008)
 
 
 # ---------------------------------------------------------------- launching

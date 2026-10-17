@@ -39,8 +39,7 @@ func _get_android_manifest_element_contents(platform: EditorExportPlatform, debu
 	</queries>
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-	<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-		tools:ignore="QueryAllPackagesPermission" />
+	<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 """
 
 

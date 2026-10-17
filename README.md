@@ -84,6 +84,11 @@ come from `style.gd`.
 ## Build
 
 1. `cd android-plugin && gradlew.bat assemble` (JDK 17, SDK at `C:\Android\sdk`).
+   Create `local.properties` from `local.properties.example` first if Gradle
+   cannot find the SDK. **Check the AARs actually landed** in
+   `godot/addons/shelves/bin/debug/` and `.../release/` — the export plugin
+   skips the plugin with an error in the Output panel if they are missing, and
+   the app then falls back to mock data.
    The AARs are copied into `godot/addons/shelves/bin/`. Set
    `godotVersion` in `plugin/build.gradle.kts` to your editor version.
 2. Open `godot/` and run *Project → Install Android Build Template*.
@@ -137,13 +142,15 @@ features.
   animation should move the pivot inside `MediaItem` instead.
 - **Rotation should be yaw only.** The right stick and the touch drag both feed
   pitch as well as yaw.
-- **App discovery and launching do not work on the device.** The Kotlin plugin
-  has never been compiled or run. Check whether it loaded at all first: when
-  `Engine.has_singleton("LauncherPlugin")` is false, `AppBridge` quietly serves
-  its 36 mock apps, which looks like a working list of the wrong apps rather
-  than a failure. Then the AAR in `addons/shelves/bin/`, the plugin v2
-  meta-data name, the `tools:ignore` attribute in the injected manifest, and
-  Android 11 package visibility.
+- **App discovery and launching do not work on the device.** Under
+  investigation. The launcher now says `MOCK DATA — plugin not loaded` on
+  screen and logs an error when the plugin is missing on Android, so the first
+  question is answered at a glance. Two likely causes are already addressed:
+  the Gradle wrapper is now in the repo (`gradlew.bat` did not exist, so the
+  AAR may never have been built), and the `tools:ignore` attribute was removed
+  from the injected manifest, since it needs an `xmlns:tools` declaration that
+  may not be there and a merge failure drops the whole plugin. Still to rule
+  out: the plugin v2 meta-data name, and Android 11 package visibility.
 
 ## Known gaps in v0.2
 

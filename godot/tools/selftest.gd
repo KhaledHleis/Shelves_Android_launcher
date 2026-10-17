@@ -69,6 +69,35 @@ func _ready() -> void:
 		% [travel, limit])
 	_check(on_screen >= 3, "the shelf is still populated after a wrap, got %d" % on_screen)
 
+	# The switch animation used to tween the same scale property the view
+	# writes every frame, so the two fought and the model changed size as the
+	# tween ended. It must animate the pivot and leave the root alone.
+	carousel.jump_to(0)
+	await get_tree().process_frame
+	var node: MediaItem = carousel.center_node()
+	var pivot: Node3D = node.get_node("Pivot")
+	node.scale = Vector3.ONE * 2.0            # sentinel the view would rewrite next frame
+	node.play_switch()
+	_check(is_equal_approx(node.scale.x, 2.0),
+		"the switch animation leaves the view's scale alone (%.3f)" % node.scale.x)
+	_check(pivot.scale.x < 1.0,
+		"and squashes the pivot instead (%.3f)" % pivot.scale.x)
+	await get_tree().process_frame
+	_check(is_equal_approx(node.scale.x, Carousel.CENTER_SCALE),
+		"the view is the only thing setting the model's size (%.3f, expected %.3f)"
+			% [node.scale.x, Carousel.CENTER_SCALE])
+
+	# Rotation is yaw only — a stick push must not tip the case.
+	Settings.set_value("carousel_autorotate", false)
+	await get_tree().process_frame
+	carousel.center_node().add_rotation(0.6)
+	await get_tree().process_frame
+	pivot = carousel.center_node().get_node("Pivot")
+	_check(is_zero_approx(pivot.rotation.x),
+		"rotating leaves pitch alone (pitch %.3f)" % pivot.rotation.x)
+	_check(absf(pivot.rotation.y) > 0.1, "and does turn the case (yaw %.3f)" % pivot.rotation.y)
+	Settings.set_value("carousel_autorotate", true)
+
 	carousel.launch_selected()
 	_check(carousel.locked, "launching locks input until the animation ends")
 

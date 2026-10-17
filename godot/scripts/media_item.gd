@@ -23,7 +23,7 @@ var _cover_mat: StandardMaterial3D
 var _body_mat: StandardMaterial3D
 var _icon_mat: StandardMaterial3D
 
-var _user_rot := Vector2.ZERO          ## yaw, pitch added by the right stick
+var _user_yaw := 0.0                   ## yaw added by the right stick or a drag
 var _idle_since := 0.0
 var _phase := 0.0
 var _locked := false                   ## true during the insert animation
@@ -87,10 +87,12 @@ func _process(delta: float) -> void:
 	if is_center and bool(Settings.get_value("carousel_autorotate")):
 		sway = Vector3(sin(_phase * 0.7) * SWAY_AMOUNT * 0.4, sin(_phase) * SWAY_AMOUNT, 0.0)
 
-	if _idle_since > ROTATE_RETURN_DELAY and _user_rot.length() > 0.001:
-		_user_rot = _user_rot.lerp(Vector2.ZERO, clampf(delta * ROTATE_RETURN_SPEED, 0, 1))
+	if _idle_since > ROTATE_RETURN_DELAY and absf(_user_yaw) > 0.001:
+		_user_yaw = lerpf(_user_yaw, 0.0, clampf(delta * ROTATE_RETURN_SPEED, 0, 1))
 
-	_pivot.rotation = Vector3(sway.x - _user_rot.y, sway.y + _user_rot.x, 0.0)
+	# Yaw only. The small tilt on X belongs to the idle sway, not to the user:
+	# letting a stick push pitch made the case tip away and never read flat.
+	_pivot.rotation = Vector3(sway.x, sway.y + _user_yaw, 0.0)
 
 
 # ---------------------------------------------------------------- content
@@ -102,7 +104,7 @@ func set_item(index: int, package_name: String, label: String) -> void:
 	package = package_name
 	title = label
 	_label.text = label
-	_user_rot = Vector2.ZERO
+	_user_yaw = 0.0
 	_apply_colors(null)
 	var tex := AppBridge.get_icon(package)
 	if tex != null:
@@ -133,30 +135,33 @@ func colors() -> Array:
 
 # ---------------------------------------------------------------- input
 
-## Adds right-stick / drag rotation. Yaw in radians.
-func add_rotation(yaw: float, pitch: float) -> void:
+## Adds right-stick / drag rotation, in radians, around the upright axis only.
+func add_rotation(yaw: float) -> void:
 	if _locked:
 		return
-	_user_rot.x = clampf(_user_rot.x + yaw, -PI, PI)
-	_user_rot.y = clampf(_user_rot.y + pitch, -0.8, 0.8)
+	_user_yaw = clampf(_user_yaw + yaw, -PI, PI)
 	_idle_since = 0.0
 
 
 func reset_rotation() -> void:
-	_user_rot = Vector2.ZERO
+	_user_yaw = 0.0
 	_idle_since = 0.0
 
 
 # ---------------------------------------------------------------- animation
 
 ## Plays when the selection lands on this item.
+##
+## Animates the pivot, never the root: the view writes the root scale every
+## frame from the distance to the centre, so a tween on the same property left
+## the model at whichever size happened to be written last.
 func play_switch() -> void:
 	if _locked:
 		return
-	scale = Vector3.ONE * 0.92
+	_pivot.scale = Vector3.ONE * 0.92
 	var tween := create_tween()
 	tween.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(self, "scale", Vector3.ONE, 0.45)
+	tween.tween_property(_pivot, "scale", Vector3.ONE, 0.45)
 
 
 ## Cartridge-into-the-slot animation. Returns the tween so the caller can wait
@@ -183,4 +188,4 @@ func reset_after_insert() -> void:
 	_pivot.position = Vector3.ZERO
 	_pivot.scale = Vector3.ONE
 	_pivot.rotation = Vector3.ZERO
-	_user_rot = Vector2.ZERO
+	_user_yaw = 0.0

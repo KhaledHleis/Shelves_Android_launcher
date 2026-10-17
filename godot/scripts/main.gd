@@ -38,6 +38,9 @@ func _ready() -> void:
 	toast.add_theme_font_size_override("font_size", Style.FONT_BODY)
 	toast.modulate.a = 0.0
 
+	if not AppBridge.has_plugin:
+		_show_mock_badge()
+
 	carousel.selection_changed.connect(_on_selection_changed)
 	top_bar.folder_tapped.connect(func(step: int) -> void: switch_folder(step))
 	bottom_bar.prompt_activated.connect(_on_prompt)
@@ -223,6 +226,21 @@ func _on_prompt(id: String) -> void:
 			show_toast("Inspect arrives in v0.4")
 		_:
 			pass
+
+
+## A list of apps that do not exist is worse than an empty screen, because it
+## looks like it works. Say it on screen, not only in the log.
+func _show_mock_badge() -> void:
+	var badge := Label.new()
+	badge.name = "MockBadge"
+	badge.text = "MOCK DATA — plugin not loaded"
+	badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	badge.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	badge.offset_top = Style.BAR_HEIGHT + 12
+	badge.add_theme_font_size_override("font_size", Style.FONT_SMALL)
+	badge.add_theme_color_override("font_color", Style.WARN)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$UI.add_child(badge)
 
 
 func show_toast(text: String) -> void:
