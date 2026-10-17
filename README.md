@@ -126,6 +126,25 @@ lock and the fact that only seven models exist however big the library is.
 MIT — see `LICENSE`. Third-party code and assets are listed in
 `THIRD-PARTY.md`.
 
+## Known bugs
+
+Found testing v0.2 on the device. These come first in v0.3, before new
+features.
+
+- **Model scale differs before and after rotating.** The carousel layout writes
+  the model's scale every frame and the switch animation tweens the same
+  property, so the size that sticks depends on which wrote last. The switch
+  animation should move the pivot inside `MediaItem` instead.
+- **Rotation should be yaw only.** The right stick and the touch drag both feed
+  pitch as well as yaw.
+- **App discovery and launching do not work on the device.** The Kotlin plugin
+  has never been compiled or run. Check whether it loaded at all first: when
+  `Engine.has_singleton("LauncherPlugin")` is false, `AppBridge` quietly serves
+  its 36 mock apps, which looks like a working list of the wrong apps rather
+  than a failure. Then the AAR in `addons/shelves/bin/`, the plugin v2
+  meta-data name, the `tools:ignore` attribute in the injected manifest, and
+  Android 11 package visibility.
+
 ## Known gaps in v0.2
 
 - Grid layout per folder, custom folders, All apps and Hide are v0.3.
