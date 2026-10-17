@@ -75,27 +75,33 @@ float style_sweep(vec2 uv, float t) {
 	return clamp(band * (0.6 + 0.8 * length(d)), 0.0, 1.0);
 }
 
+// Patterns work in square space: uv spans the screen, which is 16:9, so a
+// cell of vec2(44, 26) was an oval and the dots came out stretched.
+vec2 square(vec2 uv) {
+	return vec2(uv.x * 1.7778, uv.y);
+}
+
 float pattern_dots(vec2 uv, float t) {
-	uv += vec2(sin(t * 0.7), cos(t * 0.5)) * 0.01;
-	vec2 g = fract(uv * vec2(44.0, 26.0)) - 0.5;
-	float d = length(g);
-	return smoothstep(0.34, 0.16, d);
+	vec2 p = square(uv) + vec2(sin(t * 0.7), cos(t * 0.5)) * 0.01;
+	vec2 g = fract(p * 48.0) - 0.5;
+	return smoothstep(0.22, 0.12, length(g));
 }
 
 float pattern_mesh(vec2 uv, float t) {
-	uv += vec2(t * 0.02, sin(t * 0.4) * 0.01);
-	vec2 g = abs(fract(uv * vec2(34.0, 20.0)) - 0.5);
-	float line = min(g.x, g.y);
-	return smoothstep(0.1, 0.0, line);
+	vec2 p = square(uv) + vec2(t * 0.02, sin(t * 0.4) * 0.01);
+	vec2 g = abs(fract(p * 30.0) - 0.5);
+	return smoothstep(0.055, 0.0, min(g.x, g.y));
 }
 
 float pattern_triangles(vec2 uv, float t) {
-	uv += vec2(sin(t * 0.3) * 0.015, t * 0.01);
-	vec2 p = uv * vec2(26.0, 16.0);
-	p.x += floor(p.y) * 0.5;              // stagger, so the cells are triangular
+	// A real triangular lattice: shear the grid, then measure the distance to
+	// the three edges of the cell.
+	vec2 p = square(uv) + vec2(sin(t * 0.3) * 0.015, t * 0.01);
+	p *= 22.0;
+	p.x += p.y * 0.5;
 	vec2 f = fract(p);
 	float e = min(min(f.x, f.y), abs(f.x + f.y - 1.0));
-	return smoothstep(0.12, 0.0, e);
+	return smoothstep(0.07, 0.0, e);
 }
 
 // Chladni figures: the nodal lines of a square plate, where the sand settles.
@@ -103,8 +109,9 @@ float pattern_triangles(vec2 uv, float t) {
 float pattern_chladni(vec2 uv, float t) {
 	float n = 3.0 + 2.0 * sin(t * 0.21);
 	float m = 5.0 + 3.0 * cos(t * 0.17);
-	float v = sin(n * PI * uv.x) * sin(m * PI * uv.y)
-			- sin(m * PI * uv.x) * sin(n * PI * uv.y);
+	vec2 p = square(uv) * vec2(0.5625, 1.0) + vec2(0.22, 0.0);  // square plate
+	float v = sin(n * PI * p.x) * sin(m * PI * p.y)
+			- sin(m * PI * p.x) * sin(n * PI * p.y);
 	return smoothstep(0.06, 0.0, abs(v));
 }
 

@@ -18,6 +18,7 @@ const SPACING_X := 0.58
 const SPACING_Y := 0.52                ## rows line up, so they need room
 const SELECTED_SCALE := 0.84
 const ITEM_SCALE := 0.56
+const PUSH := 0.22                     ## how far the selection shoves neighbours
 const FADE_ROWS := 1.7
 const FADE_COLS := 2.7
 
@@ -33,6 +34,8 @@ const STICK_SPEED := 2.6
 var items: Array[Dictionary] = []
 var index: int = 0
 var locked: bool = false
+## Cleared while a panel is open, so the shelf behind it does not move too.
+var reads_input: bool = true
 
 var _nodes: Array[MediaItem] = []
 ## How far the lattice still has to travel, in cells, on both axes: the
@@ -79,9 +82,9 @@ func current() -> Dictionary:
 ## The node holding the selection, or null while it is off screen.
 func center_node() -> MediaItem:
 	for node in _nodes:
-		if node.item_index == index:
+		if node.item_index == index and node.visible:
 			return node
-	return _nodes[0]
+	return null
 
 
 func row_count() -> int:
@@ -95,7 +98,7 @@ func _process(delta: float) -> void:
 	if _lag.length() < 0.001:
 		_lag = Vector2.ZERO
 	_layout()
-	if locked:
+	if locked or not reads_input:
 		return
 	_handle_repeat(delta)
 	_handle_stick(delta)
@@ -119,6 +122,7 @@ func _layout() -> void:
 		var slot := row * COLS + col
 		if row < 0 or slot < 0 or slot >= total:
 			node.visible = false
+			node.item_index = -1
 			continue
 		node.set_item(slot, items[slot]["package"], items[slot]["name"])
 
@@ -126,7 +130,16 @@ func _layout() -> void:
 		var dx := float(col - sel_col) + _lag.x
 		var dy := float(row - sel_row) + _lag.y
 		var is_selected := slot == index
-		node.position = Vector3(dx * SPACING_X, -dy * SPACING_Y, 0.12 if is_selected else 0.0)
+		# Neighbours are shoved outward, as if the selection were pushing them
+		# away — the further off they are, the less they feel it.
+		var away := Vector2(dx, dy)
+		var shove := Vector2.ZERO
+		if not is_selected and away.length() > 0.01:
+			shove = away.normalized() * PUSH / maxf(away.length(), 0.85)
+		node.position = Vector3(
+			(dx + shove.x) * SPACING_X,
+			-(dy + shove.y) * SPACING_Y,
+			0.12 if is_selected else 0.0)
 		node.scale = Vector3.ONE * (SELECTED_SCALE if is_selected else ITEM_SCALE)
 		node.rotation.y = 0.0
 		node.is_center = is_selected
@@ -141,12 +154,22 @@ func _on_icon_ready(package: String, tex: Texture2D) -> void:
 
 # ---------------------------------------------------------------- navigation
 
-## Horizontal moves run through the whole folder and wrap at either end, so
-## the grid loops the way the carousel does.
+## How many items this row actually holds — the last one is usually short.
+func _row_length(row: int) -> int:
+	return clampi(items.size() - row * COLS, 0, COLS)
+
+
+## Horizontal moves wrap inside the row they started on. Running off the end
+## of a line onto the start of the next one loses your place; up and down are
+## for changing line.
 func move(step: int) -> void:
 	if items.is_empty() or step == 0:
 		return
-	var next := wrapi(index + step, 0, items.size())
+	var row := index / COLS
+	var length := _row_length(row)
+	if length <= 1:
+		return
+	var next := row * COLS + wrapi(index % COLS + step, 0, length)
 	if next == index:
 		return
 	var before := index
@@ -168,11 +191,12 @@ func move(step: int) -> void:
 func move_row(step: int) -> void:
 	if items.is_empty() or step == 0:
 		return
-	var next := index + step * COLS
-	if next < 0 or next >= items.size():
-		next = clampi(next, 0, items.size() - 1)
-		if next == index:
-			return
+	var row := index / COLS + step
+	if row < 0 or row * COLS >= items.size():
+		return
+	var next := row * COLS + mini(index % COLS, maxi(_row_length(row) - 1, 0))
+	if next == index:
+		return
 	index = next
 	_lag += Vector2(0.0, float(step))
 	_clamp_lag()
@@ -250,7 +274,7 @@ func _apply(dir: Vector2i) -> void:
 
 func _handle_stick(delta: float) -> void:
 	var node := center_node()
-	if node == null or not node.visible:
+	if node == null:
 		return
 	var rx := 0.0
 	for device in Input.get_connected_joypads():

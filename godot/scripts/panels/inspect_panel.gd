@@ -18,6 +18,9 @@ var _picking_art: bool = false
 func _ready() -> void:
 	super()
 	set_title("Inspect")
+	# Half the screen, so the model keeps playing on the left while its shape,
+	# finish and colours change under the cursor.
+	set_sheet(true)
 
 
 func open_for(target: String, fallback_name: String = "") -> void:

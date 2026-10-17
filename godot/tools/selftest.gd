@@ -152,12 +152,24 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_check(main.view == grid_view, "a folder set to grid opens in the grid view")
 	grid_view.move(-1)
-	_check(grid_view.index == total - 1, "the grid wraps backwards too, got %d" % grid_view.index)
+	_check(grid_view.index == GridView.COLS - 1,
+		"left from the first item wraps inside its own row, got %d" % grid_view.index)
+	grid_view.jump_to(GridView.COLS)
+	grid_view.move(-1)
+	_check(grid_view.index == GridView.COLS * 2 - 1,
+		"and the same on the second row, got %d" % grid_view.index)
+	grid_view.jump_to(0)
 	grid_view.jump_to(0)
 	grid_view.move_row(-1)
 	_check(grid_view.index == 0, "and a row move off the top stays put")
 	grid_view.move_row(1)
 	_check(grid_view.index == GridView.COLS, "a row down moves a whole row, got %d" % grid_view.index)
+	# Every row must have a rotatable model, not just the middle of the window.
+	for row in [0, 1, 2]:
+		grid_view.jump_to(row * GridView.COLS)
+		await get_tree().process_frame
+		var sel: MediaItem = grid_view.center_node()
+		_check(sel != null and sel.visible, "row %d has a live model to rotate" % row)
 	Library.set_folder_layout("all", "carousel")
 	main._load_folder(false)
 	await get_tree().process_frame

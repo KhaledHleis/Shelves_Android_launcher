@@ -18,6 +18,24 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+### Grid feel, bevelled shapes, square patterns
+
+- Patterns were stretched: they worked in screen uv, which is 16:9, so every
+  cell was an oval. They work in square space now, and the triangle lattice
+  is a real sheared grid rather than staggered squares.
+- The box, cartridge and card are chamfered, so the edge catches the light at
+  a different angle from the face and the shape reads as an object.
+- In the grid the selection is larger and shoves its neighbours outward, the
+  further off the less they feel it.
+- Left and right now wrap inside the row they started on instead of running
+  onto the next line.
+- Rows other than the middle of the window had no rotatable model: hidden
+  nodes kept their old item index, so the lookup could return an invisible
+  one. Hidden nodes are cleared, and the lookup only accepts a visible node.
+- Inspect is a half-width sheet, so the model stays on screen and changes as
+  you move through shape, finish and colours.
+- The shelf no longer reads the pad while a panel is open.
+
 ### Socket-style chrome, and bicolour backgrounds
 
 - Button prompts, the folder tabs and the title under the model are rounded

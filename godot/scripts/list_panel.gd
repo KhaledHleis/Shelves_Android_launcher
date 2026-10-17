@@ -32,6 +32,7 @@ var _repeat: Vector2i = Vector2i.ZERO
 var _repeat_timer: float = 0.0
 var _dialog: Control
 var _cols: int = 1
+var _dim: ColorRect
 ## The press that opened this panel is still "just pressed" when the panel
 ## first runs, so Y to open All apps also hid the first app in it.
 var _grace: int = 0
@@ -42,11 +43,11 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var dim := ColorRect.new()
-	dim.color = Style.BG_DARK
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(dim)
+	_dim = ColorRect.new()
+	_dim.color = Style.BG_DARK
+	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dim)
 
 	_title = Label.new()
 	_title.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
@@ -138,6 +139,20 @@ func set_title(text: String) -> void:
 func enable_search(enabled: bool) -> void:
 	_search.visible = enabled
 	_scroll.offset_top = 176 if enabled else 112
+
+
+## A sheet covers part of the screen instead of all of it, so whatever is
+## being edited stays visible and updates as you change it.
+func set_sheet(enabled: bool) -> void:
+	if not enabled:
+		return
+	anchor_left = 0.46
+	offset_left = 0.0
+	_dim.color = Color(Style.BG_DARK, 0.96)
+	_title.offset_left = 36
+	_search.offset_left = 36
+	_scroll.offset_left = 36
+	_prompts.offset_left = 36
 
 
 ## More than one column turns the rows into tiles — what All apps uses.

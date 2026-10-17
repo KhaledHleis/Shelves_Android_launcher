@@ -140,10 +140,12 @@ func _push(panel: ListPanel) -> void:
 	# child too — otherwise it opens behind the opaque panel that opened it.
 	$Overlay.move_child(panel, -1)
 	_stack.append(panel)
+	_set_view_input(false)
 
 
 func _on_panel_closed(panel: ListPanel) -> void:
 	_stack.erase(panel)
+	_set_view_input(_stack.is_empty())
 	if not _stack.is_empty():
 		var top: ListPanel = _stack.back()
 		top.active = true
@@ -152,6 +154,11 @@ func _on_panel_closed(panel: ListPanel) -> void:
 
 ## True while any panel is up — the home screen stops reading input then, so
 ## a press cannot move the shelf behind an open list.
+func _set_view_input(enabled: bool) -> void:
+	carousel.reads_input = enabled
+	grid.reads_input = enabled
+
+
 func panel_open() -> bool:
 	return not _stack.is_empty()
 

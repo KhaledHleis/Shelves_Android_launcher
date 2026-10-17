@@ -23,6 +23,10 @@ static func get_mesh() -> ArrayMesh:
 
 
 static func _build() -> ArrayMesh:
+	return _slab(WIDTH, HEIGHT, DEPTH, 0.016)
+
+
+static func _build_flat() -> ArrayMesh:
 	var w := WIDTH * 0.5
 	var h := HEIGHT * 0.5
 	var d := DEPTH * 0.5
@@ -118,17 +122,39 @@ static func height_for(kind: String) -> float:
 		_: return HEIGHT
 
 
-static func _slab(w: float, h: float, d: float) -> ArrayMesh:
+## A slab with a chamfered front edge: the bevel is what makes the shape read
+## as an object rather than a painted rectangle, because it catches the light
+## at a different angle from the face.
+static func _slab(w: float, h: float, d: float, bevel: float = 0.018) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var hw := w * 0.5
 	var hh := h * 0.5
 	var hd := d * 0.5
+	var iw := hw - bevel
+	var ih := hh - bevel
+	var fz := hd
+	var bz := hd - bevel
+
 	var front := SurfaceTool.new()
 	front.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_quad(front, Vector3(-hw, hh, hd), Vector3(hw, hh, hd), Vector3(hw, -hh, hd),
-		Vector3(-hw, -hh, hd), Vector3(0, 0, 1))
+	_quad(front, Vector3(-iw, ih, fz), Vector3(iw, ih, fz), Vector3(iw, -ih, fz),
+		Vector3(-iw, -ih, fz), Vector3(0, 0, 1))
+	# the four chamfer faces, carrying the edge of the art with them
+	_bevel_quad(front, Vector3(-iw, ih, fz), Vector3(iw, ih, fz),
+		Vector3(hw, hh, bz), Vector3(-hw, hh, bz), Vector3(0, 0.7, 0.7),
+		Vector2(0, 0), Vector2(1, 0))
+	_bevel_quad(front, Vector3(iw, -ih, fz), Vector3(-iw, -ih, fz),
+		Vector3(-hw, -hh, bz), Vector3(hw, -hh, bz), Vector3(0, -0.7, 0.7),
+		Vector2(1, 1), Vector2(0, 1))
+	_bevel_quad(front, Vector3(-iw, -ih, fz), Vector3(-iw, ih, fz),
+		Vector3(-hw, hh, bz), Vector3(-hw, -hh, bz), Vector3(-0.7, 0, 0.7),
+		Vector2(0, 1), Vector2(0, 0))
+	_bevel_quad(front, Vector3(iw, ih, fz), Vector3(iw, -ih, fz),
+		Vector3(hw, -hh, bz), Vector3(hw, hh, bz), Vector3(0.7, 0, 0.7),
+		Vector2(1, 0), Vector2(1, 1))
 	front.generate_tangents()
 	front.commit(mesh)
+	hd = bz
 
 	var body := SurfaceTool.new()
 	body.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -150,11 +176,11 @@ static func _slab(w: float, h: float, d: float) -> ArrayMesh:
 
 
 static func _cartridge() -> ArrayMesh:
-	return _slab(0.46, 0.42, 0.11)
+	return _slab(0.46, 0.42, 0.11, 0.022)
 
 
 static func _card() -> ArrayMesh:
-	return _slab(0.44, 0.30, 0.014)
+	return _slab(0.44, 0.30, 0.014, 0.006)
 
 
 ## A flat annulus: label side, then the edge and the back.
@@ -190,6 +216,18 @@ static func _disc() -> ArrayMesh:
 	mesh.surface_set_name(0, "art")
 	mesh.surface_set_name(1, "body")
 	return mesh
+
+
+## One chamfer face. The two outer corners reuse the art UV of the inner edge
+## they came from, so the texture does not shear across the bevel.
+static func _bevel_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3,
+		normal: Vector3, uv_a: Vector2, uv_b: Vector2) -> void:
+	var pts := [a, b, c, d]
+	var uvs := [uv_a, uv_b, uv_b, uv_a]
+	for i in [0, 1, 2, 0, 2, 3]:
+		st.set_normal(normal.normalized())
+		st.set_uv(uvs[i])
+		st.add_vertex(pts[i])
 
 
 static func _ring_quad(st: SurfaceTool, a0: float, a1: float, inner: float, outer: float,

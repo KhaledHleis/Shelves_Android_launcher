@@ -28,7 +28,9 @@ const STICK_SPEED := 2.6               ## radians per second at full tilt
 
 var items: Array[Dictionary] = []
 var index: int = 0
-var locked: bool = false               ## true while an insert animation runs
+var locked: bool = false
+## Cleared while a panel is open, so the shelf behind it does not move too.
+var reads_input: bool = true               ## true while an insert animation runs
 
 var _nodes: Array[MediaItem] = []
 ## How far the view is behind the selection, in slots. Relative on purpose:
@@ -81,7 +83,7 @@ func _process(delta: float) -> void:
 	if absf(_lag) < 0.001:
 		_lag = 0.0
 	_layout()
-	if locked:
+	if locked or not reads_input:
 		return
 	_handle_repeat(delta)
 	_handle_stick(delta)
