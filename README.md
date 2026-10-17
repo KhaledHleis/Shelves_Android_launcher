@@ -26,7 +26,9 @@ Inspect (per-app customisation) is still stubbed and arrives in v0.4.
 | Hide | Hidden apps leave every shelf and are restored from Settings |
 | New | Recently installed and not yet filed — filing an app is what empties it |
 | Settings | Prompt style, A/B swap, sounds and volume, idle animation, clock |
-| Screens | Shared list panel: pad navigation, touch rows, per-screen prompts |
+| Screens | Shared panel: list or icon grid, pad navigation, touch, prompts |
+| All apps | Shown as a grid of icons; Start flips to the hidden apps and back |
+| Folder editor | Open a folder to set its layout, rename it, delete it and tick which apps are in it |
 
 Three v0.2 bugs are fixed: the model changing size after a switch, rotation
 picking up pitch as well as yaw, and the yaw stopping dead at half a turn.
@@ -64,6 +66,8 @@ after touching the screen only wakes the cursor.
 | Jump 10 at a time | L2 / R2 | — |
 | Inspect / Apps / Settings | X / Y / Start | Tap the prompt |
 | In a list: file into folders / hide | X / Y | Tap the prompt |
+| In All apps: show hidden apps | Start | Tap the prompt |
+| Back out of a screen | B, or the Android back gesture | Tap Back |
 
 On a keyboard: arrows, Enter, Q/E for folders, `[` `]` to jump, X/Y/F1 for the
 three screens.

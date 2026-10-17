@@ -1,6 +1,8 @@
 class_name FoldersPanel
 extends ListPanel
-## Folder management: order, layout, renaming, deleting.
+## The list of folders. Everything about one folder lives in its editor.
+
+signal edit_requested(folder_id: String)
 
 func _ready() -> void:
 	super()
@@ -28,39 +30,34 @@ func build_rows() -> Array[Dictionary]:
 
 func prompt_defs() -> Array:
 	return [
-		["ui_accept", "Layout"],
-		["inspect", "Rename"],
-		["all_apps", "Delete"],
+		["ui_accept", "Open"],
+		["inspect", "Move up"],
+		["all_apps", "Move down"],
 		["ui_cancel", "Back"],
 	]
 
 
-## A — switch this folder between the carousel and the grid.
 func on_activate(id: String) -> void:
 	if id == "__new__":
 		ask_text("Name the folder", "", func(name: String) -> void:
-			Library.create_folder(name)
+			var new_id := Library.create_folder(name)
+			edit_requested.emit(new_id)
 		)
 		return
-	if id.is_empty():
-		return
-	var next := "grid" if Library.folder_layout(id) == "carousel" else "carousel"
-	Library.set_folder_layout(id, next)
-	refresh()
+	if not id.is_empty():
+		edit_requested.emit(id)
 
 
-## X — rename.
+## X / Y — reorder, which decides the order of the tabs on the home screen.
 func on_alt(id: String) -> void:
-	var folder := Library.folder_by_id(id)
-	if folder.is_empty() or bool(folder.get("builtin", false)):
-		return
-	ask_text("Rename folder", str(folder["name"]), func(name: String) -> void:
-		Library.rename_folder(id, name)
-	)
+	if not id.is_empty() and id != "__new__":
+		Library.move_folder(id, -1)
+		selected = maxi(selected - 1, 0)
+		refresh()
 
 
-## Y — delete. Built-in folders refuse.
 func on_alt2(id: String) -> void:
-	if Library.delete_folder(id):
-		Audio.play("back")
+	if not id.is_empty() and id != "__new__":
+		Library.move_folder(id, 1)
+		selected += 1
 		refresh()

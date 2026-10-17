@@ -25,6 +25,10 @@ var _all_apps: AllAppsPanel
 var _folders: FoldersPanel
 var _picker: FolderPickerPanel
 var _settings: SettingsPanel
+var _folder_edit: FolderEditPanel
+## Panels open on top of each other (Settings → Folders → one folder), so
+## they form a stack and only the top of it reads input.
+var _stack: Array[ListPanel] = []
 
 var _sky_material: ShaderMaterial
 var _press_pos := Vector2.ZERO
@@ -69,30 +73,58 @@ func _build_panels() -> void:
 	_folders = FoldersPanel.new()
 	_picker = FolderPickerPanel.new()
 	_settings = SettingsPanel.new()
-	for panel in [_all_apps, _folders, _picker, _settings]:
+	_folder_edit = FolderEditPanel.new()
+	for panel in [_all_apps, _folders, _picker, _settings, _folder_edit]:
 		$Overlay.add_child(panel)
+		panel.closed.connect(_on_panel_closed.bind(panel))
 
 	_all_apps.folder_requested.connect(func(package: String) -> void:
+		_push(_picker)
 		_picker.open_for(package)
 	)
-	_settings.open_folders.connect(func() -> void: _folders.open())
+	_folders.edit_requested.connect(func(folder_id: String) -> void:
+		_push(_folder_edit)
+		_folder_edit.open_for(folder_id)
+	)
+	_settings.open_folders.connect(func() -> void:
+		_push(_folders)
+		_folders.open()
+	)
 	_settings.open_hidden.connect(func() -> void:
 		_all_apps.show_hidden = true
+		_push(_all_apps)
 		_all_apps.open()
 	)
 	_all_apps.closed.connect(func() -> void: _all_apps.show_hidden = false)
 
 
+## Opens a panel on top of whatever is already up.
+func _push(panel: ListPanel) -> void:
+	if not _stack.is_empty():
+		_stack.back().active = false
+	panel.active = true
+	_stack.append(panel)
+
+
+func _on_panel_closed(panel: ListPanel) -> void:
+	_stack.erase(panel)
+	if not _stack.is_empty():
+		var top: ListPanel = _stack.back()
+		top.active = true
+		top.refresh()
+
+
 ## True while any panel is up — the home screen stops reading input then, so
 ## a press cannot move the shelf behind an open list.
 func panel_open() -> bool:
-	for panel in [_all_apps, _folders, _picker, _settings]:
-		if panel != null and panel.is_open:
-			return true
-	return false
+	return not _stack.is_empty()
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		# Android's back gesture closes the top panel rather than the app.
+		if not _stack.is_empty():
+			_stack.back().close()
 	if what == NOTIFICATION_APPLICATION_RESUMED:
 		# Picks up anything installed or removed while we were in the background.
 		Library.refresh()
@@ -278,8 +310,10 @@ func _on_prompt(id: String) -> void:
 		"launch":
 			view.launch_selected()
 		"settings":
+			_push(_settings)
 			_settings.open()
 		"all_apps":
+			_push(_all_apps)
 			_all_apps.open()
 		"inspect":
 			show_toast("Inspect arrives in v0.4")

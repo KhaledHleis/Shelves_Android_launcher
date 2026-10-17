@@ -13,6 +13,7 @@ func _ready() -> void:
 	super()
 	set_title("All apps")
 	enable_search(true)
+	set_columns(5)
 	Library.library_changed.connect(func() -> void:
 		if is_open:
 			refresh()
@@ -54,11 +55,12 @@ func build_rows() -> Array[Dictionary]:
 
 func prompt_defs() -> Array:
 	if show_hidden:
-		return [["ui_accept", "Unhide"], ["ui_cancel", "Back"]]
+		return [["ui_accept", "Unhide"], ["launcher_settings", "Show all"], ["ui_cancel", "Back"]]
 	return [
 		["ui_accept", "Launch"],
 		["inspect", "Folders"],
 		["all_apps", "Hide"],
+		["launcher_settings", "Show hidden"],
 		["ui_cancel", "Back"],
 	]
 
@@ -88,6 +90,17 @@ func on_alt2(id: String) -> void:
 	Library.set_hidden(id, true)
 	Audio.play("back")
 	refresh()
+
+
+## Start — show the hidden apps, and back again. Unhiding is A in that list.
+func on_alt3(_id: String) -> void:
+	show_hidden = not show_hidden
+	selected = 0
+	Audio.play("folder")
+	set_title("Hidden apps" if show_hidden else "All apps")
+	_build_prompts()
+	refresh()
+	_update_title()
 
 
 func _update_title() -> void:

@@ -163,6 +163,50 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_check(main.view == carousel, "and switches back to the carousel")
 
+	# Panels stack: opening one from another must leave only the top reading
+	# input, or a single press acts on both.
+	var apps_panel: AllAppsPanel = main._all_apps
+	var picker: FolderPickerPanel = main._picker
+	main._push(apps_panel)
+	apps_panel.open()
+	_check(main.panel_open(), "opening a panel takes input off the home screen")
+	_check(apps_panel.active, "the open panel is active")
+	main._push(picker)
+	picker.open_for(package)
+	_check(picker.active and not apps_panel.active,
+		"opening a second panel deactivates the one underneath")
+	picker.close()
+	await get_tree().process_frame
+	_check(apps_panel.active and apps_panel.is_open,
+		"closing it hands input back to the panel below")
+	apps_panel.close()
+	await get_tree().process_frame
+	_check(not main.panel_open(), "and closing the last one returns to the shelf")
+
+	# Hiding is reversible from the same screen.
+	Library.set_hidden(package, true)
+	apps_panel.show_hidden = true
+	apps_panel.refresh()
+	var listed := false
+	for row in apps_panel.rows:
+		if str(row.get("id", "")) == package:
+			listed = true
+	_check(listed, "a hidden app is listed under Show hidden")
+	apps_panel.on_activate(package)
+	_check(not Library.is_hidden(package), "and A there unhides it")
+	apps_panel.show_hidden = false
+
+	# A folder's contents are editable from the folder itself.
+	var edit: FolderEditPanel = main._folder_edit
+	var fid2 := Library.create_folder("Shooters")
+	edit.open_for(fid2)
+	edit.on_activate(package)
+	_check(Library.in_folder(package, fid2), "the folder editor files an app into it")
+	edit.on_activate("__layout__")
+	_check(Library.folder_layout(fid2) == "grid", "and switches its layout")
+	edit.close()
+	Library.delete_folder(fid2)
+
 	# The diagnostics text runs on the device, where a crash in it would be
 	# invisible — exercise the path here.
 	var diag := AppBridge.diagnostics()

@@ -18,11 +18,20 @@ func _ready() -> void:
 		InputMode.mode_changed.emit(true)
 	await get_tree().create_timer(1.5).timeout
 	if args.has("apps"):
+		main._push(main._all_apps)
 		main._all_apps.open()
 	if args.has("settings"):
+		main._push(main._settings)
 		main._settings.open()
 	if args.has("folders"):
+		main._push(main._folders)
 		main._folders.open()
+	if args.has("folderedit"):
+		var fid := Library.create_folder("Emulators", "grid")
+		for app in Library.search().slice(0, 3):
+			Library.set_in_folder(app["package"], fid, true)
+		main._push(main._folder_edit)
+		main._folder_edit.open_for(fid)
 	await get_tree().create_timer(1.5).timeout
 	get_viewport().get_texture().get_image().save_png("user://shot.png")
 	print("shot saved")

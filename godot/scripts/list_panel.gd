@@ -15,17 +15,21 @@ const REPEAT_RATE := 0.07
 var rows: Array[Dictionary] = []       ## {id, text, suffix, icon, checked}
 var selected: int = 0
 var is_open: bool = false
+## Only the panel on top of the stack reads input: two open panels both
+## answering the pad made every press do two things at once.
+var active: bool = true
 
 var _title: Label
 var _search: LineEdit
-var _list: VBoxContainer
+var _list: GridContainer
 var _scroll: ScrollContainer
 var _prompts: HBoxContainer
 var _empty: Label
 var _row_nodes: Array[Control] = []
-var _repeat_dir: int = 0
+var _repeat: Vector2i = Vector2i.ZERO
 var _repeat_timer: float = 0.0
 var _dialog: Control
+var _cols: int = 1
 
 
 func _ready() -> void:
@@ -70,9 +74,14 @@ func _ready() -> void:
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(_scroll)
 
-	_list = VBoxContainer.new()
+	# A GridContainer with one column behaves like a list, so both shapes use
+	# the same code path.
+	_list = GridContainer.new()
+	_list.columns = 1
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.add_theme_constant_override("separation", 4)
+	_list.add_theme_constant_override("h_separation", 16)
+	_list.add_theme_constant_override("v_separation", 16)
 	_scroll.add_child(_list)
 
 	_empty = Label.new()
@@ -125,6 +134,13 @@ func enable_search(enabled: bool) -> void:
 	_scroll.offset_top = 176 if enabled else 112
 
 
+## More than one column turns the rows into tiles — what All apps uses.
+func set_columns(count: int) -> void:
+	_cols = maxi(count, 1)
+	_list.columns = _cols
+	refresh()
+
+
 func search_text() -> String:
 	return _search.text if _search != null else ""
 
@@ -155,8 +171,13 @@ func refresh() -> void:
 
 
 func _make_row(i: int, row: Dictionary) -> Control:
+	if _cols > 1:
+		return _make_tile(i, row)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size.y = ROW_HEIGHT
+	# A GridContainer only stretches a child that asks to expand; without this
+	# every row shrank to the width of its own text.
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.gui_input.connect(func(event: InputEvent) -> void:
 		var tapped := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
@@ -220,6 +241,64 @@ func _make_row(i: int, row: Dictionary) -> Control:
 	return panel
 
 
+func _make_tile(i: int, row: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(0, 190)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(func(event: InputEvent) -> void:
+		var tapped := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
+			or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
+		if tapped:
+			selected = i
+			_paint_selection()
+			activate()
+	)
+	_list.add_child(panel)
+
+	var column := VBoxContainer.new()
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 10)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(column)
+
+	var package := str(row.get("icon", ""))
+	var icon := TextureRect.new()
+	icon.name = "Icon"
+	icon.custom_minimum_size = Vector2(96, 96)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if not package.is_empty():
+		icon.texture = AppBridge.get_icon(package)
+		icon.set_meta("package", package)
+	column.add_child(icon)
+
+	var label := Label.new()
+	label.text = str(row.get("text", ""))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.max_lines_visible = 2
+	label.add_theme_font_size_override("font_size", Style.FONT_SMALL)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(label)
+
+	var suffix := str(row.get("suffix", ""))
+	if bool(row.get("checked", false)):
+		suffix = "✓ " + suffix
+	if not suffix.is_empty():
+		var note := Label.new()
+		note.text = suffix
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		note.add_theme_font_size_override("font_size", Style.FONT_SMALL)
+		note.add_theme_color_override("font_color", Style.ACCENT)
+		note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(note)
+
+	return panel
+
+
 func _paint_selection() -> void:
 	for i in _row_nodes.size():
 		var style := StyleBoxFlat.new()
@@ -252,7 +331,7 @@ func selected_row() -> Dictionary:
 # ---------------------------------------------------------------- input
 
 func _process(delta: float) -> void:
-	if not is_open:
+	if not is_open or not active:
 		return
 	if _dialog != null:
 		if InputMode.back_just_pressed():
@@ -277,17 +356,24 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("all_apps"):
 		on_alt2(str(selected_row().get("id", "")))
 		return
-
-	var dir := 0
-	if Input.is_action_pressed("ui_down"):
-		dir += 1
-	if Input.is_action_pressed("ui_up"):
-		dir -= 1
-	if dir == 0:
-		_repeat_dir = 0
+	if Input.is_action_just_pressed("launcher_settings"):
+		on_alt3(str(selected_row().get("id", "")))
 		return
-	if dir != _repeat_dir:
-		_repeat_dir = dir
+
+	var dir := Vector2i.ZERO
+	if Input.is_action_pressed("ui_down"):
+		dir.y += 1
+	if Input.is_action_pressed("ui_up"):
+		dir.y -= 1
+	if Input.is_action_pressed("ui_right"):
+		dir.x += 1
+	if Input.is_action_pressed("ui_left"):
+		dir.x -= 1
+	if dir == Vector2i.ZERO:
+		_repeat = Vector2i.ZERO
+		return
+	if dir != _repeat:
+		_repeat = dir
 		_repeat_timer = REPEAT_DELAY
 		if InputMode.consume_wake():
 			return
@@ -299,10 +385,17 @@ func _process(delta: float) -> void:
 		_move(dir)
 
 
-func _move(step: int) -> void:
+func _move(dir: Vector2i) -> void:
 	if rows.is_empty():
 		return
-	var next := wrapi(selected + step, 0, rows.size())
+	var next := selected
+	if _cols <= 1:
+		if dir.y != 0:
+			next = wrapi(selected + dir.y, 0, rows.size())
+	elif dir.x != 0:
+		next = wrapi(selected + dir.x, 0, rows.size())
+	elif dir.y != 0:
+		next = clampi(selected + dir.y * _cols, 0, rows.size() - 1)
 	if next == selected:
 		return
 	selected = next
@@ -413,6 +506,8 @@ func _on_prompt_tapped(action: String) -> void:
 			on_alt(str(selected_row().get("id", "")))
 		"all_apps":
 			on_alt2(str(selected_row().get("id", "")))
+		"launcher_settings":
+			on_alt3(str(selected_row().get("id", "")))
 
 
 # ---------------------------------------------------------------- subclasses
@@ -436,4 +531,8 @@ func on_alt(_id: String) -> void:
 
 
 func on_alt2(_id: String) -> void:
+	pass
+
+
+func on_alt3(_id: String) -> void:
 	pass
