@@ -95,6 +95,18 @@ come from `style.gd`.
 3. *Project → Export → Android*, tick **Use Gradle Build**, min SDK 24, export.
 4. Press Home on the device and pick Shelves.
 
+**If the app shows `MOCK DATA — plugin not loaded`,** the AAR did not reach the
+APK. In order of likelihood: the AAR was never built (check
+`godot/addons/shelves/bin/*/`), or **Use Gradle Build** was off during export —
+an Android plugin can only be injected by the Gradle build, and Godot does not
+warn you about it. The export plugin now prints a banner in the Output panel
+when the AAR is missing, and the export dialog shows a warning next to that
+option.
+
+No Gradle locally? Take the AAR from a green CI run instead: Actions → the
+latest run → Artifacts → `launcher-plugin-aar`, then drop the two files into
+`godot/addons/shelves/bin/debug/` and `.../release/`.
+
 To get back out while testing: Settings → Apps → Default apps → Home app.
 Set `REGISTER_AS_HOME = false` in `addons/shelves/export_plugin.gd` to
 export it as an ordinary app instead.

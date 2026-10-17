@@ -22,9 +22,37 @@ func _get_android_libraries(platform: EditorExportPlatform, debug: bool) -> Pack
 	var variant := "debug" if debug else "release"
 	var path := "%s%s/%s-%s.aar" % [BIN_DIR, variant, PLUGIN_NAME, variant]
 	if not FileAccess.file_exists(path):
-		push_error("Shelves: %s is missing — run gradlew assemble in android-plugin/." % path)
+		# Loud, because the export still succeeds without it and the app then
+		# silently runs on mock data.
+		printerr("================================================================")
+		printerr("  SHELVES: %s is MISSING." % path)
+		printerr("  The APK will have NO launcher plugin: no app list, no launching.")
+		printerr("  Build it with android-plugin/gradlew assemble, or download the")
+		printerr("  AAR from a green CI run and drop it in that folder.")
+		printerr("================================================================")
 		return PackedStringArray()
+	print("Shelves: bundling %s" % path)
 	return PackedStringArray([path])
+
+
+## Shown next to the option in the export dialog. An Android plugin can only
+## be injected by the Gradle build, so exporting with it off produces an APK
+## with no plugin and no warning from Godot itself.
+func _get_export_option_warning(platform: EditorExportPlatform, option: String) -> String:
+	if not _supports_platform(platform):
+		return ""
+	if option == "gradle_build/use_gradle_build":
+		var missing := []
+		for variant in ["debug", "release"]:
+			var path := "%s%s/%s-%s.aar" % [BIN_DIR, variant, PLUGIN_NAME, variant]
+			if not FileAccess.file_exists(path):
+				missing.append(variant)
+		if not missing.is_empty():
+			return "Shelves: the %s plugin AAR is missing from %s. Build it in \
+android-plugin/ (gradlew assemble) or the app will run on mock data." \
+				% [", ".join(missing), BIN_DIR]
+		return "Shelves: this must stay ON — the launcher plugin is only injected by the Gradle build."
+	return ""
 
 
 ## Goes inside <manifest>: the Android 11+ package visibility entry, the
