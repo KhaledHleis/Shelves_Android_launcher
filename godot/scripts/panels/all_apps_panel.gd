@@ -4,6 +4,7 @@ extends ListPanel
 ## into folders and hidden from the shelves.
 
 signal folder_requested(package: String)
+signal inspect_requested(package: String)
 
 var sort: Library.Sort = Library.Sort.NAME
 var show_hidden: bool = false
@@ -58,7 +59,7 @@ func prompt_defs() -> Array:
 		return [["ui_accept", "Unhide"], ["launcher_settings", "Show all"], ["ui_cancel", "Back"]]
 	return [
 		["ui_accept", "Launch"],
-		["inspect", "Folders"],
+		["inspect", "Inspect"],
 		["all_apps", "Hide"],
 		["launcher_settings", "Show hidden"],
 		["ui_cancel", "Back"],
@@ -76,11 +77,11 @@ func on_activate(id: String) -> void:
 	AppBridge.launch_app(id)
 
 
-## X — file this app into folders.
+## X — everything about this app, folders included.
 func on_alt(id: String) -> void:
 	if id.is_empty() or show_hidden:
 		return
-	folder_requested.emit(id)
+	inspect_requested.emit(id)
 
 
 ## Y — hide it from every shelf.

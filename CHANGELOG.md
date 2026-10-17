@@ -3,6 +3,21 @@
 Versions follow the roadmap in the design document. Each one ends with a
 working APK.
 
+## v0.4 — Customisation
+
+- Inspect, reachable with X from the shelf or All apps: display name, media
+  shape, finish, cover and label art, launch action, folders, reset.
+- Four media shapes built as meshes: box, cartridge, disc (a real annulus
+  with the art mapped round it) and card.
+- Five finishes: opaque, translucent, clear, metallic, glitter.
+- Cover and label art read from a watched folder, so files can be dropped on
+  the device with a file manager.
+- Custom launch actions, parsed by shape: a link, a package/activity pair, or
+  another package. `launchIntent(json)` added to the Kotlin plugin, which is
+  what games inside GameNative need.
+- The carousel shows three items; the grid is a honeycomb with the selection
+  centred and alternate rows offset.
+
 ## v0.3 — Library and folders
 
 - Custom folders: create, rename, delete, reorder; an app can be in several.

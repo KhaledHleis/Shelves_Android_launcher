@@ -1,4 +1,4 @@
-# Shelves — v0.3 "Library and folders"
+# Shelves — v0.4 "Customisation"
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
@@ -12,11 +12,24 @@ icon) and fixes what breaks on a large Android library.
 Godot 4.7 for everything you see, a small Kotlin plugin for everything that
 needs Android.
 
-v0.3 adds the library: custom folders, the All apps screen with search, hiding,
-settings, and a looping grid as an alternative to the carousel for any folder.
-Inspect (per-app customisation) is still stubbed and arrives in v0.4.
+v0.4 adds Inspect: every app can have its own media shape, finish, art, name
+and launch action. Slow mode (the shelf and the open box) is v0.5.
 
-## What v0.3 adds on top of v0.2
+## What v0.4 adds on top of v0.3
+
+| Area | v0.4 |
+| --- | --- |
+| Media shapes | Box, cartridge, disc or card, per app, built as meshes rather than imported |
+| Finishes | Opaque, translucent, clear, metallic, glitter |
+| Art | Cover and label images from a watched folder — drop files in and pick them |
+| Display name | Rename an app without touching Android |
+| Launch action | A link, a package/activity, or the app's own launcher — this is what games inside GameNative need |
+| Inspect | X on the shelf or in All apps opens it; changes show on the models immediately |
+
+Layout changes: the carousel shows exactly three (previous, current, next),
+and the grid is a honeycomb with the selection in the middle of the screen.
+
+## What v0.3 added on top of v0.2
 
 | Area | v0.3 |
 | --- | --- |
@@ -176,11 +189,26 @@ MIT — see `LICENSE`. Third-party code and assets are listed in
   the AAR is missing, and the launcher shows `MOCK DATA — plugin not loaded`
   rather than quietly listing apps that do not exist.
 
-## Known gaps in v0.3
+## Art folder
 
-- Inspect, per-app models, cover art and custom launch actions are v0.4.
-- Slow mode (shelf and open box) is v0.5.
-- Folder membership is set from All apps (X); Inspect will offer it too.
+Cover and label images are read from a folder, so no file browser or storage
+permission is needed:
+
+```
+/storage/emulated/0/Shelves/art     on the device
+user://art                          everywhere (made on first use)
+```
+
+PNG, JPG and WebP. Inspect lists what it finds there.
+
+## Known gaps in v0.4
+
+- Slow mode (shelf, spines, open box) is v0.5.
+- Shaders on the media (glitch, hologram) and the background texture overlay
+  are v0.6.
+- Imported .glb models and the standby screen are v0.7.
+- Custom launch actions are written as text; a picker that reads shortcuts
+  from the app itself would be better.
 - The background has the moving gradient but not the texture overlay (v0.6).
 - Finishes, shaders and custom launch actions are v0.4.
 - The Kotlin side is untested against a device from here — the Gradle build has

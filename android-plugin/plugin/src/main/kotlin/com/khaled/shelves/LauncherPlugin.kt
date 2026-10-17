@@ -118,6 +118,44 @@ class LauncherPlugin(godot: Godot) : GodotPlugin(godot) {
         }
     }
 
+    /**
+     * A custom launch action, as JSON. Three shapes:
+     *   {"type":"uri","data":"gamenative://play/123"}
+     *   {"type":"component","package":"com.x","component":"com.x.MainActivity"}
+     *   {"type":"package","package":"com.x"}
+     * Optional: "action" (defaults to VIEW for a uri, MAIN otherwise) and
+     * "extras", a flat object of string values.
+     */
+    @UsedByGodot
+    fun launchIntent(json: String): Boolean {
+        val context = activity ?: return false
+        return try {
+            val spec = JSONObject(json)
+            val type = spec.optString("type", "uri")
+            val intent = when (type) {
+                "uri" -> Intent(
+                    spec.optString("action", Intent.ACTION_VIEW),
+                    android.net.Uri.parse(spec.getString("data"))
+                )
+                "component" -> Intent(spec.optString("action", Intent.ACTION_MAIN)).apply {
+                    setClassName(spec.getString("package"), spec.getString("component"))
+                }
+                else -> context.packageManager
+                    .getLaunchIntentForPackage(spec.getString("package"))
+                    ?: return false
+            }
+            spec.optJSONObject("extras")?.let { extras ->
+                for (key in extras.keys()) intent.putExtra(key, extras.getString(key))
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "launchIntent failed: $json", e)
+            false
+        }
+    }
+
     // ---------------------------------------------------------------- status
 
     /** `{level: 0-100, charging: bool}` */

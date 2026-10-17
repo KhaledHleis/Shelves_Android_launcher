@@ -26,6 +26,7 @@ var _folders: FoldersPanel
 var _picker: FolderPickerPanel
 var _settings: SettingsPanel
 var _folder_edit: FolderEditPanel
+var _inspect: InspectPanel
 ## Panels open on top of each other (Settings → Folders → one folder), so
 ## they form a stack and only the top of it reads input.
 var _stack: Array[ListPanel] = []
@@ -74,13 +75,18 @@ func _build_panels() -> void:
 	_picker = FolderPickerPanel.new()
 	_settings = SettingsPanel.new()
 	_folder_edit = FolderEditPanel.new()
-	for panel in [_all_apps, _folders, _picker, _settings, _folder_edit]:
+	_inspect = InspectPanel.new()
+	for panel in [_all_apps, _folders, _picker, _settings, _folder_edit, _inspect]:
 		$Overlay.add_child(panel)
 		panel.closed.connect(_on_panel_closed.bind(panel))
 
 	_all_apps.folder_requested.connect(func(package: String) -> void:
 		_push(_picker)
 		_picker.open_for(package)
+	)
+	_all_apps.inspect_requested.connect(func(package: String) -> void:
+		_push(_inspect)
+		_inspect.open_for(package)
 	)
 	_folders.edit_requested.connect(func(folder_id: String) -> void:
 		_push(_folder_edit)
@@ -96,6 +102,20 @@ func _build_panels() -> void:
 		_all_apps.open()
 	)
 	_all_apps.closed.connect(func() -> void: _all_apps.show_hidden = false)
+	_inspect.folder_requested.connect(func(package: String) -> void:
+		_push(_picker)
+		_picker.open_for(package)
+	)
+	# A shape or a finish changing has to reach the models already on screen.
+	_inspect.changed.connect(func(_package: String) -> void:
+		for v in [carousel, grid]:
+			for item in v.get_children():
+				if item is MediaItem:
+					(item as MediaItem).apply_customization()
+		_on_selection_changed(view.index, view.items.size(),
+			str(view.current().get("package", "")), Library.display_name(
+				str(view.current().get("package", "")), str(view.current().get("name", ""))))
+	)
 
 
 ## Opens a panel on top of whatever is already up.
@@ -316,7 +336,10 @@ func _on_prompt(id: String) -> void:
 			_push(_all_apps)
 			_all_apps.open()
 		"inspect":
-			show_toast("Inspect arrives in v0.4")
+			var cur: Dictionary = view.current()
+			if not cur.is_empty():
+				_push(_inspect)
+				_inspect.open_for(str(cur["package"]), str(cur["name"]))
 		_:
 			pass
 

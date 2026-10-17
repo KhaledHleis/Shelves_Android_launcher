@@ -8,15 +8,16 @@ extends Node3D
 signal selection_changed(index: int, total: int, package: String, title: String)
 signal launching(package: String)
 
-const COLS := 4
-const ROWS := 4                        ## rows of nodes kept alive (2 on screen)
+const COLS := 5                        ## items per row in the lattice
+const ROWS := 5                        ## rows of nodes kept alive (3 on screen)
 const WINDOW := COLS * ROWS
-const SPACING_X := 0.60
-const SPACING_Y := 0.62                ## two rows fit between the bars at this pitch
-const SELECTED_SCALE := 0.80
-const ITEM_SCALE := 0.64
-const ROW_OFFSET := 0.31               ## centres those two rows
-const FADE_ROWS := 1.6
+const SPACING_X := 0.58
+const SPACING_Y := 0.46                ## tighter than X, as a hex packing is
+const SELECTED_SCALE := 0.84
+const ITEM_SCALE := 0.56
+const STAGGER := 0.5                   ## odd rows shift half a column across
+const FADE_ROWS := 1.7
+const FADE_COLS := 2.7
 
 const SCROLL_SPEED := 9.0
 const MAX_LAG := 1.4
@@ -31,7 +32,10 @@ var index: int = 0
 var locked: bool = false
 
 var _nodes: Array[MediaItem] = []
-var _lag: float = 0.0                  ## rows the view trails the selection
+## How far the lattice still has to travel, in cells, on both axes: the
+## selection is always drawn dead centre, so moving scrolls the grid rather
+## than the cursor.
+var _lag := Vector2.ZERO
 var _repeat: Vector2i = Vector2i.ZERO
 var _repeat_timer: float = 0.0
 
@@ -56,7 +60,7 @@ func set_items(list: Array[Dictionary], keep_package: String = "") -> void:
 			if items[i]["package"] == keep_package:
 				index = i
 				break
-	_lag = 0.0
+	_lag = Vector2.ZERO
 	for node in _nodes:
 		node.item_index = -1
 	_layout()
@@ -84,9 +88,9 @@ func row_count() -> int:
 # ---------------------------------------------------------------- loop
 
 func _process(delta: float) -> void:
-	_lag = lerpf(_lag, 0.0, clampf(delta * SCROLL_SPEED, 0.0, 1.0))
-	if absf(_lag) < 0.001:
-		_lag = 0.0
+	_lag = _lag.lerp(Vector2.ZERO, clampf(delta * SCROLL_SPEED, 0.0, 1.0))
+	if _lag.length() < 0.001:
+		_lag = Vector2.ZERO
 	_layout()
 	if locked:
 		return
@@ -96,33 +100,40 @@ func _process(delta: float) -> void:
 
 func _layout() -> void:
 	var total := items.size()
-	var rows := row_count()
-	var selected_row := index / COLS
-	# The window follows the selected row, one row above it so a move up has
-	# something already instanced to show.
-	var first_row := selected_row - 1
+	if total == 0:
+		for node in _nodes:
+			node.visible = false
+		return
+
+	var sel_row := index / COLS
+	var sel_col := index % COLS
+	var first_row := sel_row - (ROWS / 2)
 
 	for j in WINDOW:
 		var node := _nodes[j]
 		var row := first_row + (j / COLS)
 		var col := j % COLS
 		var slot := row * COLS + col
-		if total == 0 or row < 0 or slot < 0 or slot >= total or rows == 0:
+		if row < 0 or slot < 0 or slot >= total:
 			node.visible = false
 			continue
-		node.visible = true
 		node.set_item(slot, items[slot]["package"], items[slot]["name"])
 
+		# Measured from the selection, which is why it lands at the origin.
+		var dx := float(col - sel_col) + _stagger(row) - _stagger(sel_row) + _lag.x
+		var dy := float(row - sel_row) + _lag.y
 		var is_selected := slot == index
-		var y_row := float(row - selected_row) + _lag
-		node.position = Vector3(
-			(float(col) - float(COLS - 1) * 0.5) * SPACING_X,
-			ROW_OFFSET - y_row * SPACING_Y,
-			0.1 if is_selected else 0.0)
+		node.position = Vector3(dx * SPACING_X, -dy * SPACING_Y, 0.12 if is_selected else 0.0)
 		node.scale = Vector3.ONE * (SELECTED_SCALE if is_selected else ITEM_SCALE)
 		node.rotation.y = 0.0
 		node.is_center = is_selected
-		node.visible = absf(y_row) < FADE_ROWS
+		node.visible = absf(dy) < FADE_ROWS and absf(dx) < FADE_COLS
+
+
+## Half-column offset on alternate rows — what makes it read as a honeycomb
+## rather than a spreadsheet.
+func _stagger(row: int) -> float:
+	return STAGGER if posmod(row, 2) == 1 else 0.0
 
 
 func _on_icon_ready(package: String, tex: Texture2D) -> void:
@@ -141,9 +152,12 @@ func move(step: int) -> void:
 	var next := wrapi(index + step, 0, items.size())
 	if next == index:
 		return
-	var row_before := index / COLS
+	var before := index
 	index = next
-	_lag = clampf(_lag + float(index / COLS - row_before), -MAX_LAG, MAX_LAG)
+	_lag += Vector2(
+		float(index % COLS - before % COLS) + _stagger(index / COLS) - _stagger(before / COLS),
+		float(index / COLS - before / COLS))
+	_lag = _lag.limit_length(MAX_LAG)
 	Audio.play("move", 0.06)
 	_layout()
 	var node := center_node()
@@ -163,7 +177,8 @@ func move_row(step: int) -> void:
 		if next == index:
 			return
 	index = next
-	_lag = clampf(_lag + float(step), -MAX_LAG, MAX_LAG)
+	_lag += Vector2(0.0, float(step))
+	_lag = _lag.limit_length(MAX_LAG)
 	Audio.play("move", 0.06)
 	_layout()
 	var node := center_node()
@@ -179,7 +194,7 @@ func jump_to(target: int) -> void:
 	if next == index:
 		return
 	index = next
-	_lag = 0.0
+	_lag = Vector2.ZERO
 	_layout()
 	_emit_selection()
 

@@ -24,6 +24,8 @@ var _body_mat: StandardMaterial3D
 var _icon_mat: StandardMaterial3D
 
 var _user_yaw := 0.0                   ## yaw added by the right stick or a drag
+var _kind: String = "box"
+var _finish: String = "opaque"
 var _idle_since := 0.0
 var _phase := 0.0
 var _locked := false                   ## true during the insert animation
@@ -105,12 +107,71 @@ func set_item(index: int, package_name: String, label: String) -> void:
 	title = label
 	_label.text = label
 	_user_yaw = 0.0
+	apply_customization()
 	_apply_colors(null)
 	var tex := AppBridge.get_icon(package)
 	if tex != null:
 		apply_icon(tex)
 	else:
 		_icon_mat.albedo_texture = null
+
+
+## Reads this app's record: which shape, which finish, which art. Called when
+## the item is reused and again whenever Inspect changes something.
+func apply_customization() -> void:
+	var rec := Library.record(package)
+	_kind = str(rec.get("model", "box"))
+	_finish = str(rec.get("finish", "opaque"))
+	_box.mesh = BoxMediaMesh.mesh_for(_kind)
+	_apply_finish()
+
+	var half_depth := BoxMediaMesh.depth_for(_kind)
+	var half_height := BoxMediaMesh.height_for(_kind) * 0.5
+	_icon.position = Vector3(0, half_height * 0.25, half_depth + 0.002)
+	_label.position = Vector3(0, -half_height * 0.45, half_depth + 0.003)
+
+	# User art replaces the generated look entirely when it is set.
+	var cover := ArtLibrary.texture(str(rec.get("cover", "")))
+	var label_art := ArtLibrary.texture(str(rec.get("label", "")))
+	var art: Texture2D = label_art if _kind in ["disc", "cartridge"] and label_art != null else cover
+	_cover_mat.albedo_texture = art
+	var has_art := art != null
+	_icon.visible = not has_art
+	_label.visible = not has_art
+	if has_art:
+		_cover_mat.albedo_color = Color.WHITE
+
+
+func _apply_finish() -> void:
+	match _finish:
+		"translucent":
+			_cover_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_cover_mat.albedo_color.a = 0.55
+			_cover_mat.roughness = 0.25
+			_cover_mat.metallic = 0.0
+		"clear":
+			_cover_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			_cover_mat.albedo_color.a = 0.28
+			_cover_mat.roughness = 0.04
+			_cover_mat.metallic = 0.0
+		"metallic":
+			_cover_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_cover_mat.albedo_color.a = 1.0
+			_cover_mat.metallic = 0.75
+			_cover_mat.roughness = 0.30
+		"glitter":
+			_cover_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_cover_mat.albedo_color.a = 1.0
+			_cover_mat.metallic = 0.7
+			_cover_mat.roughness = 0.12
+			_cover_mat.rim_enabled = true
+			_cover_mat.rim = 0.9
+		_:
+			_cover_mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+			_cover_mat.albedo_color.a = 1.0
+			_cover_mat.metallic = 0.05
+			_cover_mat.roughness = 0.42
+			_cover_mat.rim_enabled = false
 
 
 func apply_icon(tex: Texture2D) -> void:
@@ -122,7 +183,10 @@ func _apply_colors(tex: Texture2D) -> void:
 	var colors := IconColors.pair(tex, package) if tex != null else [Style.BG_MID, Style.BG_DARK]
 	var vivid: Color = colors[0]
 	var deep: Color = colors[1]
-	_cover_mat.albedo_color = deep.lerp(vivid, 0.55)
+	if _cover_mat.albedo_texture == null:
+		var tint := deep.lerp(vivid, 0.55)
+		tint.a = _cover_mat.albedo_color.a
+		_cover_mat.albedo_color = tint
 	_body_mat.albedo_color = deep.darkened(0.35)
 	_label.modulate = Color(1, 1, 1, 0.95)
 

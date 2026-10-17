@@ -11,12 +11,24 @@ func _ready() -> void:
 		Library.set_folder_layout("all", "grid")
 	else:
 		Library.set_folder_layout("all", "carousel")
+	if args.has("shapes"):
+		var kinds := ["cartridge", "disc", "card", "box"]
+		var finishes := ["opaque", "metallic", "glitter", "translucent"]
+		for i in kinds.size():
+			var app: Dictionary = Library.search()[i]
+			Library.set_app_value(app["package"], "model", kinds[i])
+			Library.set_app_value(app["package"], "finish", finishes[i])
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
+
 	if args.has("pad"):
 		InputMode.using_pad = true
 		InputMode.mode_changed.emit(true)
 	await get_tree().create_timer(1.5).timeout
+	if args.has("inspect"):
+		var app2: Dictionary = Library.search()[0]
+		main._push(main._inspect)
+		main._inspect.open_for(app2["package"], app2["name"])
 	if args.has("apps"):
 		main._push(main._all_apps)
 		main._all_apps.open()

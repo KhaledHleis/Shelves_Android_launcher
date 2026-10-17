@@ -204,6 +204,22 @@ func _first_seen(package: String) -> int:
 	return int(record(package).get("first_seen", 0))
 
 
+## Sets one field of an app's record. Inspect writes everything through here
+## so there is a single place that saves and tells the views to re-read.
+func set_app_value(package: String, key: String, value: Variant) -> void:
+	record(package)[key] = value
+	save()
+	if key == "display_name":
+		_rebuild_folders(int(Time.get_unix_time_from_system()))
+	library_changed.emit()
+
+
+## What pressing A on this app should do: its own launcher by default, or
+## whatever Inspect was given — a link for a game inside GameNative, say.
+func launch_action(package: String) -> Dictionary:
+	return record(package).get("launch", {})
+
+
 func record(package: String) -> Dictionary:
 	var apps: Dictionary = _data["apps"]
 	if not apps.has(package):
@@ -308,8 +324,11 @@ func _new_record() -> Dictionary:
 		"hidden": false,
 		"first_seen": 0,
 		"folders": [],          # manual folder ids
-		"model": "box",         # v0.4
-		"launch": {},           # custom launch action — v0.4
+		"model": "box",         # box | cartridge | disc | card
+		"finish": "opaque",     # opaque | translucent | clear | metallic | glitter
+		"cover": "",            # path to an image in the watched art folder
+		"label": "",
+		"launch": {},           # custom launch action, or empty for the default
 	}
 
 

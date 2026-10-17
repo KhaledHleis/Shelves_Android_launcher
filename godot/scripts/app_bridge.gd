@@ -125,10 +125,25 @@ func get_installed_apps() -> Array[Dictionary]:
 
 
 func launch_app(package: String) -> bool:
+	var action := Library.launch_action(package)
+	if not action.is_empty():
+		return launch_action(action)
 	if has_plugin:
 		return bool(_plugin.launchApp(package))
 	print("[mock] launch ", package)
 	return true
+
+
+## A custom action: a link, a component, or another package. This is what
+## games living inside GameNative and similar apps need.
+func launch_action(action: Dictionary) -> bool:
+	if not has_plugin:
+		print("[mock] launch action ", action)
+		return true
+	if not _plugin.has_method("launchIntent"):
+		push_error("plugin is too old for custom launch actions")
+		return false
+	return bool(_plugin.launchIntent(JSON.stringify(action)))
 
 
 # ---------------------------------------------------------------- icons

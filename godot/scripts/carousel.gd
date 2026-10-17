@@ -16,7 +16,7 @@ const CENTER_SCALE := 1.15
 const SIDE_SCALE := 0.70
 const SIDE_TILT := deg_to_rad(20.0)
 const SIDE_DEPTH := -0.30
-const FADE_FROM := 2.2                 ## slots out where an item is invisible
+const FADE_FROM := 1.55                ## three on screen: previous, current, next
 
 const SCROLL_SPEED := 9.0
 const MAX_LAG := 1.6                   ## slots the view may trail the selection

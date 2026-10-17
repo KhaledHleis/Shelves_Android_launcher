@@ -207,6 +207,32 @@ func _ready() -> void:
 	edit.close()
 	Library.delete_folder(fid2)
 
+	# ---- v0.4: customisation
+	var inspect: InspectPanel = main._inspect
+	inspect.open_for(package, "Test")
+	inspect.on_activate("model")
+	_check(Library.record(package).get("model") == "cartridge",
+		"Inspect cycles the media shape, got %s" % Library.record(package).get("model"))
+	inspect.on_activate("finish")
+	_check(Library.record(package).get("finish") == "translucent",
+		"and the finish, got %s" % Library.record(package).get("finish"))
+	for kind in BoxMediaMesh.KINDS:
+		var mesh := BoxMediaMesh.mesh_for(kind)
+		_check(mesh != null and mesh.get_surface_count() == 2,
+			"%s is a two-surface mesh (art, body)" % kind)
+
+	# A custom launch action is parsed by shape, not by asking the user.
+	Library.set_app_value(package, "launch", inspect._parse_launch("gamenative://play/42"))
+	_check(Library.launch_action(package).get("type") == "uri", "a link parses as a uri")
+	Library.set_app_value(package, "launch", inspect._parse_launch("com.x/com.x.Main"))
+	_check(Library.launch_action(package).get("type") == "component",
+		"package/activity parses as a component")
+	Library.set_app_value(package, "launch", inspect._parse_launch(""))
+	_check(Library.launch_action(package).is_empty(), "and blank means the app's own launcher")
+	inspect.on_activate("reset")
+	_check(Library.record(package).get("model") == "", "reset clears the app's customisation")
+	inspect.close()
+
 	# The diagnostics text runs on the device, where a crash in it would be
 	# invisible — exercise the path here.
 	var diag := AppBridge.diagnostics()
