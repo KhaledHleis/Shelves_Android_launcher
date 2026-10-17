@@ -25,6 +25,8 @@ and launch action. Slow mode (the shelf and the open box) is v0.5.
 | Display name | Rename an app without touching Android |
 | Launch action | A link, a package/activity, or the app's own launcher — this is what games inside GameNative need |
 | Inspect | X on the shelf or in All apps opens it; changes show on the models immediately |
+| Background | Per app: taken from the icon, or one of five palettes |
+| Choice lists | Any setting with several values opens a list instead of cycling |
 
 Layout changes: the carousel shows exactly three (previous, current, next),
 and the grid is a honeycomb with the selection in the middle of the screen.
@@ -188,6 +190,21 @@ MIT — see `LICENSE`. Third-party code and assets are listed in
   `gradlew.bat`. The wrapper is committed, the export plugin says loudly when
   the AAR is missing, and the launcher shows `MOCK DATA — plugin not loaded`
   rather than quietly listing apps that do not exist.
+
+## Custom 3D models (planned for v0.7, contract fixed now)
+
+The four shapes are built by `box_mesh.gd` rather than imported, and every one
+of them follows the same rule, which is also the rule an imported `.glb` will
+follow:
+
+- **Surface 0 is the art.** Its UVs are a plain 0-1 rectangle (on the disc,
+  mapped round the face), and the cover or label texture goes on it.
+- **Surface 1 is everything else** — back, edges, spine — and takes the body
+  colour and the finish.
+
+So a model you make in Blender needs exactly two materials, with the one on
+the faces that should show the art first. Anything beyond that (a separate
+spine texture, an insert) comes with Slow mode in v0.5.
 
 ## Art folder
 

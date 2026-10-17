@@ -27,6 +27,7 @@ var _picker: FolderPickerPanel
 var _settings: SettingsPanel
 var _folder_edit: FolderEditPanel
 var _inspect: InspectPanel
+var _choice: ChoicePanel
 ## Panels open on top of each other (Settings → Folders → one folder), so
 ## they form a stack and only the top of it reads input.
 var _stack: Array[ListPanel] = []
@@ -76,9 +77,15 @@ func _build_panels() -> void:
 	_settings = SettingsPanel.new()
 	_folder_edit = FolderEditPanel.new()
 	_inspect = InspectPanel.new()
-	for panel in [_all_apps, _folders, _picker, _settings, _folder_edit, _inspect]:
+	_choice = ChoicePanel.new()
+	for panel in [_all_apps, _folders, _picker, _settings, _folder_edit, _inspect, _choice]:
 		$Overlay.add_child(panel)
 		panel.closed.connect(_on_panel_closed.bind(panel))
+		panel.choice_requested.connect(
+			func(heading: String, options: Array, current: String, on_pick: Callable) -> void:
+				_push(_choice)
+				_choice.open_choice(heading, options, current, on_pick)
+		)
 
 	_all_apps.folder_requested.connect(func(package: String) -> void:
 		_push(_picker)
@@ -123,6 +130,9 @@ func _push(panel: ListPanel) -> void:
 	if not _stack.is_empty():
 		_stack.back().active = false
 	panel.active = true
+	# Panels are siblings, so the one on top of the stack has to be the last
+	# child too — otherwise it opens behind the opaque panel that opened it.
+	$Overlay.move_child(panel, -1)
 	_stack.append(panel)
 
 
@@ -206,10 +216,7 @@ func _on_icon_ready(package: String, _tex: Texture2D) -> void:
 func _tint_background(package: String) -> void:
 	if _sky_material == null or package.is_empty():
 		return
-	var tex := AppBridge.get_icon(package)
-	if tex == null:
-		return
-	var colors := IconColors.pair(tex, package)
+	var colors := Library.app_colors(package)
 	# Kept well darker than the cover, so the selected model never sinks into
 	# its own background.
 	var vivid: Color = (colors[0] as Color).darkened(0.62)

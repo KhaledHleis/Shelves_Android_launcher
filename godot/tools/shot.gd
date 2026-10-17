@@ -25,6 +25,12 @@ func _ready() -> void:
 		InputMode.using_pad = true
 		InputMode.mode_changed.emit(true)
 	await get_tree().create_timer(1.5).timeout
+	if args.has("choice"):
+		var app3: Dictionary = Library.search()[0]
+		main._push(main._inspect)
+		main._inspect.open_for(app3["package"], app3["name"])
+		await get_tree().create_timer(0.3).timeout
+		main._inspect.on_activate("finish")
 	if args.has("inspect"):
 		var app2: Dictionary = Library.search()[0]
 		main._push(main._inspect)

@@ -48,6 +48,7 @@ func build_rows() -> Array[Dictionary]:
 			"suffix": Library.display_name(package, "(app label)")},
 		{"id": "model", "text": "Media", "suffix": str(rec.get("model", "box"))},
 		{"id": "finish", "text": "Finish", "suffix": str(rec.get("finish", "opaque"))},
+		{"id": "background", "text": "Background", "suffix": str(rec.get("background", "auto"))},
 		{"id": "cover", "text": "Cover art",
 			"suffix": _art_name(str(rec.get("cover", "")))},
 		{"id": "label", "text": "Label art (disc, cartridge)",
@@ -85,9 +86,27 @@ func on_activate(id: String) -> void:
 			)
 			return
 		"model":
-			_cycle(rec, "model", MODELS, "box")
+			choose("Media", MODELS, str(rec.get("model", "box")),
+				func(value: String) -> void:
+					Library.set_app_value(package, "model", value)
+					_done()
+			)
+			return
 		"finish":
-			_cycle(rec, "finish", FINISHES, "opaque")
+			choose("Finish", FINISHES, str(rec.get("finish", "opaque")),
+				func(value: String) -> void:
+					Library.set_app_value(package, "finish", value)
+					_done()
+			)
+			return
+		"background":
+			choose("Background", Library.PALETTES.keys(),
+				str(rec.get("background", "auto")),
+				func(value: String) -> void:
+					Library.set_app_value(package, "background", value)
+					_done()
+			)
+			return
 		"cover", "label":
 			ArtLibrary.ensure_folder()
 			_art_target = id
@@ -108,8 +127,11 @@ func on_activate(id: String) -> void:
 			folder_requested.emit(package)
 			return
 		"reset":
-			for key in ["display_name", "model", "finish", "cover", "label"]:
+			for key in ["display_name", "cover", "label"]:
 				Library.set_app_value(package, key, "")
+			Library.set_app_value(package, "model", "box")
+			Library.set_app_value(package, "finish", "opaque")
+			Library.set_app_value(package, "background", "auto")
 			Library.set_app_value(package, "launch", {})
 			set_title(Library.display_name(package, package))
 	_done()
@@ -127,12 +149,6 @@ func _parse_launch(text: String) -> Dictionary:
 		var parts := clean.split("/", false, 1)
 		return {"type": "component", "package": parts[0], "component": parts[1], "data": clean}
 	return {"type": "package", "package": clean, "data": clean}
-
-
-func _cycle(rec: Dictionary, key: String, values: Array, fallback: String) -> void:
-	var current := str(rec.get(key, fallback))
-	var i := values.find(current)
-	Library.set_app_value(package, key, values[(i + 1) % values.size()])
 
 
 func _art_name(path: String) -> String:

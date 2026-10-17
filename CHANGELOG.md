@@ -18,6 +18,21 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+### Fixed after the first v0.4 build on device
+
+- Moving from the end of a row to the start of the next cut instead of
+  sliding: the grid clamped its travel as a vector length, turning a
+  four-column, one-row move into a short diagonal. Clamped per axis now.
+- Panels opened from other panels were invisible: they are siblings, so the
+  one on top of the stack has to be the last child too.
+- Apps hid themselves: the Y that opened All apps was still "just pressed"
+  when the panel first ran, so it also hid the first app. Panels ignore
+  input for two frames after opening.
+- Metallic and glitter looked like opaque because ambient and reflections
+  came from a flat colour; both come from the sky now.
+- Bigger art on the carousel models, per-app background palettes, and choice
+  lists instead of pressing A to cycle through values.
+
 ## v0.3 — Library and folders
 
 - Custom folders: create, rename, delete, reorder; an app can be in several.

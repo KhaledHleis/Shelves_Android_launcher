@@ -202,20 +202,44 @@ func _ready() -> void:
 	edit.open_for(fid2)
 	edit.on_activate(package)
 	_check(Library.in_folder(package, fid2), "the folder editor files an app into it")
+	var layout_pick := {"cb": Callable()}
+	edit.choice_requested.connect(
+		func(_h: String, _o: Array, _c: String, on_pick: Callable) -> void:
+			layout_pick["cb"] = on_pick
+	)
 	edit.on_activate("__layout__")
-	_check(Library.folder_layout(fid2) == "grid", "and switches its layout")
+	(layout_pick["cb"] as Callable).call("grid")
+	_check(Library.folder_layout(fid2) == "grid", "and its layout is picked from a list")
 	edit.close()
 	Library.delete_folder(fid2)
 
 	# ---- v0.4: customisation
 	var inspect: InspectPanel = main._inspect
 	inspect.open_for(package, "Test")
+	# Values are offered as a list now, so the panel asks its host to show one
+	# and hands back a callback. Catch it and answer as the user would.
+	var asked := {"heading": "", "options": [], "pick": Callable()}
+	inspect.choice_requested.connect(
+		func(heading: String, options: Array, _current: String, on_pick: Callable) -> void:
+			asked["heading"] = heading
+			asked["options"] = options
+			asked["pick"] = on_pick
+	)
 	inspect.on_activate("model")
-	_check(Library.record(package).get("model") == "cartridge",
-		"Inspect cycles the media shape, got %s" % Library.record(package).get("model"))
+	_check(asked["heading"] == "Media" and (asked["options"] as Array).size() == 4,
+		"Inspect offers the four media shapes as a list")
+	(asked["pick"] as Callable).call("disc")
+	_check(Library.record(package).get("model") == "disc",
+		"and picking one sets it, got %s" % Library.record(package).get("model"))
 	inspect.on_activate("finish")
-	_check(Library.record(package).get("finish") == "translucent",
-		"and the finish, got %s" % Library.record(package).get("finish"))
+	(asked["pick"] as Callable).call("metallic")
+	_check(Library.record(package).get("finish") == "metallic",
+		"the finish is picked the same way, got %s" % Library.record(package).get("finish"))
+	inspect.on_activate("background")
+	(asked["pick"] as Callable).call("ember")
+	var tinted: Array = Library.app_colors(package)
+	_check(tinted[0] == Library.PALETTES["ember"][0],
+		"a background palette overrides the icon colours")
 	for kind in BoxMediaMesh.KINDS:
 		var mesh := BoxMediaMesh.mesh_for(kind)
 		_check(mesh != null and mesh.get_surface_count() == 2,
@@ -230,7 +254,9 @@ func _ready() -> void:
 	Library.set_app_value(package, "launch", inspect._parse_launch(""))
 	_check(Library.launch_action(package).is_empty(), "and blank means the app's own launcher")
 	inspect.on_activate("reset")
-	_check(Library.record(package).get("model") == "", "reset clears the app's customisation")
+	_check(Library.record(package).get("model") == "box"
+		and Library.record(package).get("background") == "auto",
+		"reset puts the app back to the defaults")
 	inspect.close()
 
 	# The diagnostics text runs on the device, where a crash in it would be

@@ -20,7 +20,8 @@ const FADE_ROWS := 1.7
 const FADE_COLS := 2.7
 
 const SCROLL_SPEED := 9.0
-const MAX_LAG := 1.4
+const MAX_LAG_X := float(COLS)         ## a row wrap really does travel that far
+const MAX_LAG_Y := 2.0
 const REPEAT_DELAY := 0.38
 const REPEAT_RATE := 0.085
 const PAGE_JUMP := COLS * 2
@@ -157,7 +158,7 @@ func move(step: int) -> void:
 	_lag += Vector2(
 		float(index % COLS - before % COLS) + _stagger(index / COLS) - _stagger(before / COLS),
 		float(index / COLS - before / COLS))
-	_lag = _lag.limit_length(MAX_LAG)
+	_clamp_lag()
 	Audio.play("move", 0.06)
 	_layout()
 	var node := center_node()
@@ -178,13 +179,22 @@ func move_row(step: int) -> void:
 			return
 	index = next
 	_lag += Vector2(0.0, float(step))
-	_lag = _lag.limit_length(MAX_LAG)
+	_clamp_lag()
 	Audio.play("move", 0.06)
 	_layout()
 	var node := center_node()
 	if node != null:
 		node.play_switch()
 	_emit_selection()
+
+
+## Per axis, not by length: clamping the vector as a whole turned the move
+## from the end of a row to the start of the next — four columns across and
+## one row down — into a short diagonal, which read as a cut.
+func _clamp_lag() -> void:
+	_lag = Vector2(
+		clampf(_lag.x, -MAX_LAG_X, MAX_LAG_X),
+		clampf(_lag.y, -MAX_LAG_Y, MAX_LAG_Y))
 
 
 func jump_to(target: int) -> void:

@@ -55,7 +55,7 @@ func _init() -> void:
 	_icon_mat.roughness = 0.5
 	_icon_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.22, 0.22)
+	quad.size = Vector2(0.30, 0.30)
 	_icon = MeshInstance3D.new()
 	_icon.name = "Icon"
 	_icon.mesh = quad
@@ -127,6 +127,8 @@ func apply_customization() -> void:
 
 	var half_depth := BoxMediaMesh.depth_for(_kind)
 	var half_height := BoxMediaMesh.height_for(_kind) * 0.5
+	var icon_quad := _icon.mesh as QuadMesh
+	icon_quad.size = Vector2.ONE * (0.30 if _kind == "box" else 0.22)
 	_icon.position = Vector3(0, half_height * 0.25, half_depth + 0.002)
 	_label.position = Vector3(0, -half_height * 0.45, half_depth + 0.003)
 
@@ -193,8 +195,7 @@ func _apply_colors(tex: Texture2D) -> void:
 
 ## Two dominant colours of the current item, for the background gradient.
 func colors() -> Array:
-	var tex := AppBridge.get_icon(package)
-	return IconColors.pair(tex, package) if tex != null else [Style.ACCENT, Style.BG_MID]
+	return Library.app_colors(package)
 
 
 # ---------------------------------------------------------------- input

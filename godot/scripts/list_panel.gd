@@ -7,6 +7,8 @@ extends Control
 ## navigation, scrolling and prompts lives here once.
 
 signal closed
+## Asks the host to put a list of values on top of this panel.
+signal choice_requested(heading: String, options: Array, current: String, on_pick: Callable)
 
 const ROW_HEIGHT := 76
 const REPEAT_DELAY := 0.35
@@ -30,6 +32,9 @@ var _repeat: Vector2i = Vector2i.ZERO
 var _repeat_timer: float = 0.0
 var _dialog: Control
 var _cols: int = 1
+## The press that opened this panel is still "just pressed" when the panel
+## first runs, so Y to open All apps also hid the first app in it.
+var _grace: int = 0
 
 
 func _ready() -> void:
@@ -110,6 +115,7 @@ func _ready() -> void:
 func open() -> void:
 	is_open = true
 	visible = true
+	_grace = 2
 	selected = 0
 	if _search != null:
 		_search.text = ""
@@ -333,6 +339,9 @@ func selected_row() -> Dictionary:
 func _process(delta: float) -> void:
 	if not is_open or not active:
 		return
+	if _grace > 0:
+		_grace -= 1
+		return
 	if _dialog != null:
 		if InputMode.back_just_pressed():
 			_close_dialog()
@@ -511,6 +520,20 @@ func _on_prompt_tapped(action: String) -> void:
 
 
 # ---------------------------------------------------------------- subclasses
+
+## Convenience for subclasses: offer a list of values rather than cycling.
+func choose(heading: String, values: Array, current: String, on_pick: Callable) -> void:
+	var options := []
+	for value in values:
+		if value is Dictionary:
+			var copy: Dictionary = (value as Dictionary).duplicate()
+			copy["current"] = str(copy.get("id", "")) == current
+			options.append(copy)
+		else:
+			options.append({"id": str(value), "text": str(value),
+				"current": str(value) == current})
+	choice_requested.emit(heading, options, current, on_pick)
+
 
 ## What the list shows: [{id, text, suffix, icon, checked}]
 func build_rows() -> Array[Dictionary]:

@@ -214,6 +214,27 @@ func set_app_value(package: String, key: String, value: Variant) -> void:
 	library_changed.emit()
 
 
+## Named palettes for the background, so it does not have to follow the icon.
+const PALETTES := {
+	"auto": [],
+	"ember": [Color(0.98, 0.45, 0.22), Color(0.22, 0.06, 0.05)],
+	"deep sea": [Color(0.25, 0.68, 0.92), Color(0.04, 0.10, 0.20)],
+	"forest": [Color(0.45, 0.85, 0.45), Color(0.05, 0.16, 0.10)],
+	"violet": [Color(0.70, 0.40, 0.95), Color(0.12, 0.05, 0.22)],
+	"mono": [Color(0.75, 0.76, 0.80), Color(0.07, 0.07, 0.09)],
+}
+
+
+## The two colours the background gradient uses for this app: taken from the
+## icon unless a palette was picked in Inspect.
+func app_colors(package: String) -> Array:
+	var name := str(record(package).get("background", "auto"))
+	if PALETTES.has(name) and not (PALETTES[name] as Array).is_empty():
+		return (PALETTES[name] as Array).duplicate()
+	var tex := AppBridge.get_icon(package)
+	return IconColors.pair(tex, package) if tex != null else [Style.ACCENT, Style.BG_MID]
+
+
 ## What pressing A on this app should do: its own launcher by default, or
 ## whatever Inspect was given — a link for a game inside GameNative, say.
 func launch_action(package: String) -> Dictionary:
@@ -328,6 +349,7 @@ func _new_record() -> Dictionary:
 		"finish": "opaque",     # opaque | translucent | clear | metallic | glitter
 		"cover": "",            # path to an image in the watched art folder
 		"label": "",
+		"background": "auto",   # auto, or a name from PALETTES
 		"launch": {},           # custom launch action, or empty for the default
 	}
 

@@ -48,12 +48,24 @@ func on_activate(id: String) -> void:
 		"hidden":
 			open_hidden.emit()
 		"prompt_style":
-			var i := PROMPT_STYLES.find(str(Settings.get_value("prompt_style")))
-			Settings.set_value("prompt_style", PROMPT_STYLES[(i + 1) % PROMPT_STYLES.size()])
+			choose("Controller prompts", PROMPT_STYLES,
+				str(Settings.get_value("prompt_style")),
+				func(value: String) -> void:
+					Settings.set_value("prompt_style", value)
+					refresh()
+			)
+			return
 		"sound_volume_db":
-			var v := float(Settings.get_value("sound_volume_db"))
-			var i := VOLUMES.find(v)
-			Settings.set_value("sound_volume_db", VOLUMES[(i + 1) % VOLUMES.size()])
+			var levels := []
+			for db in VOLUMES:
+				levels.append({"id": "%d" % int(db), "text": "%d dB" % int(db)})
+			choose("Sound volume", levels, "%d" % int(Settings.get_value("sound_volume_db")),
+				func(value: String) -> void:
+					Settings.set_value("sound_volume_db", float(value))
+					Audio.play("select")
+					refresh()
+			)
+			return
 		"diagnostics":
 			print(AppBridge.diagnostics())
 		_:

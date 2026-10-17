@@ -56,8 +56,12 @@ func on_activate(id: String) -> void:
 		"__head__":
 			return
 		"__layout__":
-			var next := "grid" if Library.folder_layout(folder_id) == "carousel" else "carousel"
-			Library.set_folder_layout(folder_id, next)
+			choose("Layout", ["carousel", "grid"], Library.folder_layout(folder_id),
+				func(value: String) -> void:
+					Library.set_folder_layout(folder_id, value)
+					refresh()
+			)
+			return
 		"__rename__":
 			var folder := Library.folder_by_id(folder_id)
 			ask_text("Rename folder", str(folder.get("name", "")), func(name: String) -> void:
