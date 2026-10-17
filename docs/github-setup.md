@@ -9,12 +9,12 @@ Create an **empty** repository on GitHub — no README, no licence, no
 `.gitignore`, or the first push will be rejected as unrelated history. Then:
 
 ```bash
-cd socket-launcher
-git remote add origin git@github.com:<you>/socket-launcher.git
+cd shelves
+git remote add origin git@github.com:<you>/shelves.git
 git push -u origin main --follow-tags
 ```
 
-Over HTTPS use `https://github.com/<you>/socket-launcher.git` instead and sign
+Over HTTPS use `https://github.com/<you>/shelves.git` instead and sign
 in with a personal access token when prompted.
 
 If you would rather keep your own identity on the commit:

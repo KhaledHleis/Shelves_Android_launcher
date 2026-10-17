@@ -5,7 +5,7 @@ var _export_plugin: EditorExportPlugin
 
 
 func _enter_tree() -> void:
-	_export_plugin = preload("res://addons/socket_launcher/export_plugin.gd").new()
+	_export_plugin = preload("res://addons/shelves/export_plugin.gd").new()
 	add_export_plugin(_export_plugin)
 
 

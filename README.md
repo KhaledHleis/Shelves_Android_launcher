@@ -1,10 +1,14 @@
-# Socket Launcher — v0.2 "Fast mode shell"
+# Shelves — v0.2 "Fast mode shell"
 
 [![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
 
 ![The Fast-mode carousel](docs/v0.2-fast-mode.png)
 
-An Android home screen that shows your apps as physical game media.
+An Android home screen that shows your apps as physical game media — browse
+your shelf by touch or controller and pull a game off it. It keeps what works
+in Socket (snappy sound-rich UI, rotatable 3D media, a background tinted by the
+icon) and fixes what breaks on a large Android library.
+
 Godot 4.7 for everything you see, a small Kotlin plugin for everything that
 needs Android.
 
@@ -68,7 +72,7 @@ godot/
     top_bar.gd / bottom_bar.gd / shelf_indicator.gd / button_prompt.gd
     battery_icon.gd / wifi_icon.gd / style.gd
   addons/controller_icons/   vendored, MIT, Xelu CC0 icons
-  addons/socket_launcher/    export plugin (AAR + manifest injection)
+  addons/shelves/    export plugin (AAR + manifest injection)
   tools/                     dev helpers, not part of the app
 android-plugin/              Kotlin plugin -> LauncherPlugin.aar
 ```
@@ -80,14 +84,14 @@ come from `style.gd`.
 ## Build
 
 1. `cd android-plugin && gradlew.bat assemble` (JDK 17, SDK at `C:\Android\sdk`).
-   The AARs are copied into `godot/addons/socket_launcher/bin/`. Set
+   The AARs are copied into `godot/addons/shelves/bin/`. Set
    `godotVersion` in `plugin/build.gradle.kts` to your editor version.
 2. Open `godot/` and run *Project → Install Android Build Template*.
 3. *Project → Export → Android*, tick **Use Gradle Build**, min SDK 24, export.
-4. Press Home on the device and pick Socket Launcher.
+4. Press Home on the device and pick Shelves.
 
 To get back out while testing: Settings → Apps → Default apps → Home app.
-Set `REGISTER_AS_HOME = false` in `addons/socket_launcher/export_plugin.gd` to
+Set `REGISTER_AS_HOME = false` in `addons/shelves/export_plugin.gd` to
 export it as an ordinary app instead.
 
 On a PC the launcher runs with 36 mock apps and generated icons, so the whole

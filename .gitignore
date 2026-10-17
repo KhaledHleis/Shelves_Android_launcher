@@ -1,5 +1,5 @@
 godot/.godot/
-godot/addons/socket_launcher/bin/*/*.aar
+godot/addons/shelves/bin/*/*.aar
 godot/android/
 android-plugin/.gradle/
 android-plugin/build/

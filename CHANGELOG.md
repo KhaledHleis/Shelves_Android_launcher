@@ -5,6 +5,9 @@ working APK.
 
 ## v0.2 — Fast mode shell
 
+Named Shelves. The Android package is `com.khaled.shelves`; a device running
+the v0.1 build will see this as a separate app rather than an update.
+
 - 3D carousel: selected item centred, neighbours either side, index wraps.
   Exactly seven models exist however large the library is.
 - Generic game-case mesh with the cover face on its own surface, ready for
