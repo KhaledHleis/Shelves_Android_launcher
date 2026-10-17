@@ -49,6 +49,10 @@ func build_rows() -> Array[Dictionary]:
 		{"id": "model", "text": "Media", "suffix": str(rec.get("model", "box"))},
 		{"id": "finish", "text": "Finish", "suffix": str(rec.get("finish", "opaque"))},
 		{"id": "background", "text": "Background", "suffix": str(rec.get("background", "auto"))},
+		{"id": "bg_a", "text": "    Colour A", "suffix": str(rec.get("bg_a", "violet")),
+			"swatch": Library.SWATCHES.get(str(rec.get("bg_a", "violet")), Color.WHITE)},
+		{"id": "bg_b", "text": "    Colour B", "suffix": str(rec.get("bg_b", "ink")),
+			"swatch": Library.SWATCHES.get(str(rec.get("bg_b", "ink")), Color.BLACK)},
 		{"id": "cover", "text": "Cover art",
 			"suffix": _art_name(str(rec.get("cover", "")))},
 		{"id": "label", "text": "Label art (disc, cartridge)",
@@ -99,8 +103,24 @@ func on_activate(id: String) -> void:
 					_done()
 			)
 			return
+		"bg_a", "bg_b":
+			var swatches := []
+			for name in Library.SWATCHES:
+				swatches.append({"id": name, "text": name,
+					"swatch": Library.SWATCHES[name]})
+			choose("Colour", swatches, str(rec.get(id, "")),
+				func(value: String) -> void:
+					Library.set_app_value(package, id, value)
+					# Picking a colour means you want the custom pair, so stop
+					# making the user set the mode first.
+					Library.set_app_value(package, "background", "custom")
+					_done()
+			)
+			return
 		"background":
-			choose("Background", Library.PALETTES.keys(),
+			var modes: Array = Library.PALETTES.keys()
+			modes.append("custom")
+			choose("Background", modes,
 				str(rec.get("background", "auto")),
 				func(value: String) -> void:
 					Library.set_app_value(package, "background", value)

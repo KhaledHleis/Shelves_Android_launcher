@@ -60,7 +60,7 @@ func _ready() -> void:
 
 	_tabs_box = HBoxContainer.new()
 	_tabs_box.name = "Tabs"
-	_tabs_box.add_theme_constant_override("separation", 26)
+	_tabs_box.add_theme_constant_override("separation", 12)
 	centre.add_child(_tabs_box)
 
 	var next := ButtonPrompt.new()
@@ -133,9 +133,12 @@ func set_folders(folders: Array, selected: int) -> void:
 		tab.text = str(folders[i].get("name", "?")).to_upper()
 		tab.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		tab.add_theme_font_size_override("font_size", Style.FONT_BODY)
-		tab.add_theme_color_override("font_color",
-			Style.TEXT if i == selected else Style.TEXT_DIM)
-		tab.modulate.a = 1.0 if i == selected else 0.75
+		if i == selected:
+			tab.add_theme_stylebox_override("normal", Style.pill(Style.SURFACE_HI))
+			tab.add_theme_color_override("font_color", Style.BG_DARK)
+		else:
+			tab.add_theme_stylebox_override("normal", Style.pill(Color(1, 1, 1, 0.07)))
+			tab.add_theme_color_override("font_color", Style.TEXT_DIM)
 		_tabs_box.add_child(tab)
 		_tab_labels.append(tab)
 

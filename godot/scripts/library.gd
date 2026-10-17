@@ -225,10 +225,32 @@ const PALETTES := {
 }
 
 
+## The swatch grid, the same idea as Socket's colour picker.
+const SWATCHES := {
+	"white": Color(0.93, 0.94, 0.96), "silver": Color(0.65, 0.67, 0.71),
+	"ink": Color(0.10, 0.11, 0.14), "cream": Color(0.93, 0.89, 0.78),
+	"sand": Color(0.78, 0.72, 0.56), "brown": Color(0.45, 0.31, 0.22),
+	"red": Color(0.86, 0.19, 0.21), "coral": Color(0.90, 0.40, 0.31),
+	"amber": Color(0.96, 0.76, 0.14), "green": Color(0.30, 0.75, 0.36),
+	"mint": Color(0.20, 0.84, 0.62), "teal": Color(0.17, 0.55, 0.57),
+	"blue": Color(0.20, 0.40, 0.78), "indigo": Color(0.36, 0.30, 0.72),
+	"violet": Color(0.55, 0.38, 0.78), "pink": Color(0.85, 0.42, 0.62),
+	"gold": Color(0.78, 0.65, 0.25), "grey": Color(0.55, 0.56, 0.60),
+}
+
+
 ## The two colours the background gradient uses for this app: taken from the
 ## icon unless a palette was picked in Inspect.
 func app_colors(package: String) -> Array:
-	var name := str(record(package).get("background", "auto"))
+	var rec := record(package)
+	var name := str(rec.get("background", "auto"))
+	if name == "custom":
+		# Two colours of the user's choosing, which is what the design doc
+		# always called for alongside the icon colours.
+		return [
+			SWATCHES.get(str(rec.get("bg_a", "violet")), PALETTES["violet"][0]),
+			SWATCHES.get(str(rec.get("bg_b", "ink")), PALETTES["violet"][1]),
+		]
 	if PALETTES.has(name) and not (PALETTES[name] as Array).is_empty():
 		return (PALETTES[name] as Array).duplicate()
 	var tex := AppBridge.get_icon(package)
@@ -349,7 +371,9 @@ func _new_record() -> Dictionary:
 		"finish": "opaque",     # opaque | translucent | clear | metallic | glitter
 		"cover": "",            # path to an image in the watched art folder
 		"label": "",
-		"background": "auto",   # auto, or a name from PALETTES
+		"background": "auto",   # auto, a name from PALETTES, or custom
+		"bg_a": "violet",       # swatch names, used when background is custom
+		"bg_b": "ink",
 		"launch": {},           # custom launch action, or empty for the default
 	}
 

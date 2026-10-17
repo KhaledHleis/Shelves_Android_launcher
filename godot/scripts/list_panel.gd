@@ -234,6 +234,31 @@ func _make_row(i: int, row: Dictionary) -> Control:
 	suffix.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(suffix)
 
+	if row.has("swatch"):
+		var chip := ColorRect.new()
+		chip.color = row["swatch"]
+		chip.custom_minimum_size = Vector2(64, 40)
+		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(chip)
+
+	if row.has("toggle"):
+		# Socket shows state as a filled pill rather than a tick, which reads
+		# from across the room.
+		var state := Label.new()
+		var on := bool(row["toggle"])
+		state.text = "ON" if on else "OFF"
+		state.custom_minimum_size.x = 96
+		state.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		state.add_theme_font_size_override("font_size", Style.FONT_SMALL)
+		state.add_theme_color_override("font_color", Color.WHITE)
+		state.add_theme_stylebox_override("normal",
+			Style.pill(Style.ON if on else Style.OFF, 10))
+		state.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		state.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(state)
+
 	var tick := Label.new()
 	tick.text = "✓" if bool(row.get("checked", false)) else ""
 	tick.custom_minimum_size.x = 44
@@ -308,13 +333,12 @@ func _make_tile(i: int, row: Dictionary) -> Control:
 func _paint_selection() -> void:
 	for i in _row_nodes.size():
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color(Style.ACCENT, 0.22) if i == selected else Color(1, 1, 1, 0.04)
-		style.corner_radius_top_left = 10
-		style.corner_radius_top_right = 10
-		style.corner_radius_bottom_left = 10
-		style.corner_radius_bottom_right = 10
+		style.bg_color = Color(Style.ACCENT, 0.20) if i == selected else Style.SURFACE
+		style.set_corner_radius_all(Style.CARD_RADIUS)
+		style.content_margin_left = 6
+		style.content_margin_right = 14
 		if i == selected:
-			style.border_width_left = 4
+			style.set_border_width_all(3)
 			style.border_color = Style.ACCENT
 		_row_nodes[i].add_theme_stylebox_override("panel", style)
 	if selected >= 0 and selected < _row_nodes.size():

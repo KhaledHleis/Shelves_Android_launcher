@@ -73,18 +73,18 @@ mouse_filter = 2
 script = ExtResource("3_top_bar")
 
 [node name="Title" type="Label" parent="UI"]
-anchors_preset = 12
+anchors_preset = 7
+anchor_left = 0.5
 anchor_top = 1.0
-anchor_right = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_top = -242.0
-offset_bottom = -162.0
+offset_top = -232.0
+offset_bottom = -172.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2
 horizontal_alignment = 1
 vertical_alignment = 1
-clip_text = true
 
 [node name="Toast" type="Label" parent="UI"]
 anchors_preset = 12

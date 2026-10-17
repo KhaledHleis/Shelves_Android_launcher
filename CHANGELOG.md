@@ -18,6 +18,15 @@ working APK.
 - The carousel shows three items; the grid is a honeycomb with the selection
   centred and alternate rows offset.
 
+### Socket-style chrome, and bicolour backgrounds
+
+- Button prompts, the folder tabs and the title under the model are rounded
+  pills; the selected tab is a filled light chip.
+- List rows are cards, and a setting that is on or off shows a green ON or
+  red OFF pill rather than a tick.
+- Per-app background colours can be two swatches of your choosing, picked
+  from an 18-colour grid, alongside the icon colours and the palettes.
+
 ### Background shaders
 
 - Gradient styles: pools, irregular blending (domain-warped value noise), and

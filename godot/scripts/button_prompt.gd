@@ -1,5 +1,5 @@
 class_name ButtonPrompt
-extends HBoxContainer
+extends PanelContainer
 ## A button prompt: the glyph of the controller actually in use, plus a label.
 ##
 ## The glyph comes from the Controller Icons addon, so it follows the detected
@@ -33,7 +33,12 @@ var _label: Label
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	add_theme_constant_override("separation", 10)
+	add_theme_stylebox_override("panel", Style.pill(Color(1, 1, 1, 0.08)))
+
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(box)
 
 	_icon = TextureRect.new()
 	_icon.name = "Icon"
@@ -41,7 +46,8 @@ func _ready() -> void:
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_icon)
+	_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(_icon)
 
 	_label = Label.new()
 	_label.name = "Label"
@@ -49,7 +55,7 @@ func _ready() -> void:
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_label.add_theme_font_size_override("font_size", Style.FONT_SMALL)
-	add_child(_label)
+	box.add_child(_label)
 
 	_rebuild()
 	Settings.changed.connect(_on_settings_changed)

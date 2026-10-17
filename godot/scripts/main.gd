@@ -47,8 +47,9 @@ func _ready() -> void:
 	if sky != null and sky.sky_material is ShaderMaterial:
 		_sky_material = sky.sky_material
 
-	title.add_theme_font_size_override("font_size", Style.FONT_TITLE)
+	title.add_theme_font_size_override("font_size", Style.FONT_BODY)
 	title.add_theme_color_override("font_color", Style.TEXT)
+	title.add_theme_stylebox_override("normal", Style.pill(Color(0.06, 0.06, 0.09, 0.80)))
 	toast.add_theme_font_size_override("font_size", Style.FONT_BODY)
 	toast.modulate.a = 0.0
 

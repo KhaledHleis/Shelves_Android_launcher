@@ -21,12 +21,15 @@ func open_choice(heading: String, options: Array, current: String, on_pick: Call
 func build_rows() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for option in _options:
-		out.append({
+		var row := {
 			"id": str(option.get("id", "")),
 			"text": str(option.get("text", option.get("id", ""))),
 			"suffix": str(option.get("suffix", "")),
 			"checked": bool(option.get("current", false)),
-		})
+		}
+		if option.has("swatch"):
+			row["swatch"] = option["swatch"]
+		out.append(row)
 	return out
 
 

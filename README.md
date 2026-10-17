@@ -195,6 +195,8 @@ MIT — see `LICENSE`. Third-party code and assets are listed in
 
 Two settings, both launcher-wide, over colours that come from the selected app:
 
+- **Colours** — from the app icon, one of five palettes, or two swatches you
+  pick yourself in Inspect (Colour A and Colour B).
 - **Style** — `pools` (two drifting lights), `blending` (noise warped by noise,
   so the colours fold into each other in marbled bands rather than meeting on
   a clean line), `sweep` (a soft turn around the centre with a ragged edge).
