@@ -36,7 +36,7 @@ and the grid is a honeycomb with the selection in the middle of the screen.
 | Area | v0.3 |
 | --- | --- |
 | Folders | Create, rename, delete, reorder; an app can be in any number of them |
-| Layout per folder | Carousel or looping grid, switched per folder and remembered |
+| Layout per folder | Carousel (three up) or a looping square grid with the selection centred |
 | All apps | Every launchable app, searchable, with folder filing and hiding |
 | Hide | Hidden apps leave every shelf and are restored from Settings |
 | New | Recently installed and not yet filed — filing an app is what empties it |
@@ -200,7 +200,10 @@ Two settings, both launcher-wide, over colours that come from the selected app:
   a clean line), `sweep` (a soft turn around the centre with a ragged edge).
 - **Pattern** — `none`, `dots`, `mesh`, `triangles`, `chladni`. The last draws
   the nodal lines of a vibrating square plate, with both mode numbers drifting
-  so the figure keeps rebuilding itself. Strength is adjustable.
+  so the figure keeps rebuilding itself.
+- **Speed**, separately for the gradient and the pattern: `still`, `slow`,
+  `normal`, `fast`. `still` holds it completely.
+- **Pattern strength**, 15 to 75%.
 
 Everything is in one sky shader, which is why it costs a single full-screen
 pass however it is configured.

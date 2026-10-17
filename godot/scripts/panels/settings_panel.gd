@@ -32,6 +32,12 @@ func build_rows() -> Array[Dictionary]:
 			"suffix": str(Settings.get_value("bg_style"))},
 		{"id": "bg_overlay", "text": "Background pattern",
 			"suffix": str(Settings.get_value("bg_overlay"))},
+		{"id": "bg_speed", "text": "Background speed",
+			"suffix": Settings.speed_name(Settings.SPEEDS,
+				float(Settings.get_value("bg_speed")))},
+		{"id": "bg_pattern_speed", "text": "Pattern speed",
+			"suffix": Settings.speed_name(Settings.PATTERN_SPEEDS,
+				float(Settings.get_value("bg_pattern_speed")))},
 		{"id": "bg_overlay_strength", "text": "Pattern strength",
 			"suffix": "%d%%" % int(float(Settings.get_value("bg_overlay_strength")) * 100.0)},
 		{"id": "carousel_autorotate", "text": "Idle animation",
@@ -84,6 +90,16 @@ func on_activate(id: String) -> void:
 				str(Settings.get_value("bg_overlay")),
 				func(value: String) -> void:
 					Settings.set_value("bg_overlay", value)
+					refresh()
+			)
+			return
+		"bg_speed", "bg_pattern_speed":
+			var table: Dictionary = Settings.SPEEDS if id == "bg_speed" \
+				else Settings.PATTERN_SPEEDS
+			choose("Speed", table.keys(),
+				Settings.speed_name(table, float(Settings.get_value(id))),
+				func(value: String) -> void:
+					Settings.set_value(id, float(table[value]))
 					refresh()
 			)
 			return

@@ -226,6 +226,9 @@ func _apply_background_style() -> void:
 	_sky_material.set_shader_parameter("overlay", Settings.bg_overlay_index())
 	_sky_material.set_shader_parameter("overlay_strength",
 		float(Settings.get_value("bg_overlay_strength")))
+	_sky_material.set_shader_parameter("speed", float(Settings.get_value("bg_speed")))
+	_sky_material.set_shader_parameter("pattern_speed",
+		float(Settings.get_value("bg_pattern_speed")))
 
 
 func _tint_background(package: String) -> void:

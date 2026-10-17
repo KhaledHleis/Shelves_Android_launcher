@@ -25,6 +25,8 @@ working APK.
 - Pattern overlays drawn over the gradient: dots, mesh, triangles and Chladni
   figures, with adjustable strength.
 - Both are settings with their own lists; the colours still come from the app.
+- Separate speed settings for the gradient and the pattern, including still.
+- The grid is a plain square lattice again, with the selection still centred.
 
 ### Fixed after the first v0.4 build on device
 

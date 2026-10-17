@@ -4,6 +4,9 @@ extends Node3D
 ##
 ## Same contract as [Carousel] so the home screen can swap between them, and
 ## the same recycling idea — only the rows around the selection exist.
+##
+## Square lattice with the selection in the middle of the screen: the grid
+## moves, the cursor does not.
 
 signal selection_changed(index: int, total: int, package: String, title: String)
 signal launching(package: String)
@@ -12,10 +15,9 @@ const COLS := 5                        ## items per row in the lattice
 const ROWS := 5                        ## rows of nodes kept alive (3 on screen)
 const WINDOW := COLS * ROWS
 const SPACING_X := 0.58
-const SPACING_Y := 0.46                ## tighter than X, as a hex packing is
+const SPACING_Y := 0.52                ## rows line up, so they need room
 const SELECTED_SCALE := 0.84
 const ITEM_SCALE := 0.56
-const STAGGER := 0.5                   ## odd rows shift half a column across
 const FADE_ROWS := 1.7
 const FADE_COLS := 2.7
 
@@ -121,7 +123,7 @@ func _layout() -> void:
 		node.set_item(slot, items[slot]["package"], items[slot]["name"])
 
 		# Measured from the selection, which is why it lands at the origin.
-		var dx := float(col - sel_col) + _stagger(row) - _stagger(sel_row) + _lag.x
+		var dx := float(col - sel_col) + _lag.x
 		var dy := float(row - sel_row) + _lag.y
 		var is_selected := slot == index
 		node.position = Vector3(dx * SPACING_X, -dy * SPACING_Y, 0.12 if is_selected else 0.0)
@@ -129,12 +131,6 @@ func _layout() -> void:
 		node.rotation.y = 0.0
 		node.is_center = is_selected
 		node.visible = absf(dy) < FADE_ROWS and absf(dx) < FADE_COLS
-
-
-## Half-column offset on alternate rows — what makes it read as a honeycomb
-## rather than a spreadsheet.
-func _stagger(row: int) -> float:
-	return STAGGER if posmod(row, 2) == 1 else 0.0
 
 
 func _on_icon_ready(package: String, tex: Texture2D) -> void:
@@ -156,7 +152,7 @@ func move(step: int) -> void:
 	var before := index
 	index = next
 	_lag += Vector2(
-		float(index % COLS - before % COLS) + _stagger(index / COLS) - _stagger(before / COLS),
+		float(index % COLS - before % COLS),
 		float(index / COLS - before / COLS))
 	_clamp_lag()
 	Audio.play("move", 0.06)

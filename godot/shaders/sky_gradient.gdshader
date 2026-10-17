@@ -9,7 +9,8 @@ shader_type sky;
 
 uniform vec3 color_a : source_color = vec3(0.18, 0.14, 0.30);
 uniform vec3 color_b : source_color = vec3(0.04, 0.05, 0.09);
-uniform float speed = 0.05;
+uniform float speed = 0.05;          // gradient drift
+uniform float pattern_speed = 0.15;  // how fast the pattern moves, Chladni especially
 uniform float grain = 0.02;
 uniform float spread = 1.05;
 uniform int style = 0;
@@ -75,18 +76,21 @@ float style_sweep(vec2 uv, float t) {
 }
 
 float pattern_dots(vec2 uv, float t) {
+	uv += vec2(sin(t * 0.7), cos(t * 0.5)) * 0.01;
 	vec2 g = fract(uv * vec2(44.0, 26.0)) - 0.5;
 	float d = length(g);
 	return smoothstep(0.34, 0.16, d);
 }
 
 float pattern_mesh(vec2 uv, float t) {
+	uv += vec2(t * 0.02, sin(t * 0.4) * 0.01);
 	vec2 g = abs(fract(uv * vec2(34.0, 20.0)) - 0.5);
 	float line = min(g.x, g.y);
 	return smoothstep(0.1, 0.0, line);
 }
 
 float pattern_triangles(vec2 uv, float t) {
+	uv += vec2(sin(t * 0.3) * 0.015, t * 0.01);
 	vec2 p = uv * vec2(26.0, 16.0);
 	p.x += floor(p.y) * 0.5;              // stagger, so the cells are triangular
 	vec2 f = fract(p);
@@ -111,6 +115,7 @@ void sky() {
 	uv = clamp(uv, -0.5, 1.5);
 	uv.y = 1.0 - uv.y;
 	float t = TIME * speed;
+	float pt = TIME * pattern_speed;
 
 	float m = style_pools(uv, t);
 	if (style == 1) {
@@ -126,13 +131,13 @@ void sky() {
 	if (overlay > 0) {
 		float p = 0.0;
 		if (overlay == 1) {
-			p = pattern_dots(uv, t);
+			p = pattern_dots(uv, pt);
 		} else if (overlay == 2) {
-			p = pattern_mesh(uv, t);
+			p = pattern_mesh(uv, pt);
 		} else if (overlay == 3) {
-			p = pattern_triangles(uv, t);
+			p = pattern_triangles(uv, pt);
 		} else {
-			p = pattern_chladni(uv, t);
+			p = pattern_chladni(uv, pt);
 		}
 		// Lifted towards the lit colour rather than painted on in white, so
 		// the pattern belongs to the gradient underneath it.

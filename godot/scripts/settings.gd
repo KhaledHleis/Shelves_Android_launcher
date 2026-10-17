@@ -24,6 +24,8 @@ const DEFAULTS := {
 	"bg_style": "pools",         # pools | blending | sweep
 	"bg_overlay": "none",        # none | dots | mesh | triangles | chladni
 	"bg_overlay_strength": 0.30,
+	"bg_speed": 0.05,            # gradient drift
+	"bg_pattern_speed": 0.15,    # pattern drift
 }
 
 var _data: Dictionary = DEFAULTS.duplicate(true)
@@ -72,6 +74,22 @@ func save_settings() -> void:
 
 const BG_STYLES := ["pools", "blending", "sweep"]
 const BG_OVERLAYS := ["none", "dots", "mesh", "triangles", "chladni"]
+## Named speeds rather than a slider: four steps are enough and they read
+## better in a list. 0 means the background holds still.
+const SPEEDS := {"still": 0.0, "slow": 0.02, "normal": 0.05, "fast": 0.12}
+const PATTERN_SPEEDS := {"still": 0.0, "slow": 0.06, "normal": 0.15, "fast": 0.4}
+
+
+## Nearest name for a stored number, so the list can show what is set.
+static func speed_name(table: Dictionary, value: float) -> String:
+	var best := "normal"
+	var best_gap := 1e9
+	for key in table:
+		var gap: float = absf(float(table[key]) - value)
+		if gap < best_gap:
+			best_gap = gap
+			best = key
+	return best
 
 
 ## The shader takes numbers; the settings file keeps names, so the file stays
