@@ -5,6 +5,6 @@
 		     org.godotengine.plugin.v2.<plugin name>, the value is the class. -->
 		<meta-data
 			android:name="org.godotengine.plugin.v2.LauncherPlugin"
-			android:value="com.khaled.socketlauncher.LauncherPlugin" />
+			android:value="com.khaled.shelves.LauncherPlugin" />
 	</application>
 </manifest>

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
 	}
 }
 
-rootProject.name = "socket-launcher-plugin"
+rootProject.name = "shelves-plugin"
 include(":plugin")

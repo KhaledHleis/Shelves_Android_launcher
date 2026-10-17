@@ -6,10 +6,10 @@ plugins {
 // Must match the Godot editor you export with.
 val godotVersion = "4.7.0.stable"
 val pluginName = "LauncherPlugin"
-val addonBin = file("../../godot/addons/socket_launcher/bin")
+val addonBin = file("../../godot/addons/shelves/bin")
 
 android {
-	namespace = "com.khaled.socketlauncher"
+	namespace = "com.khaled.shelves"
 	compileSdk = 35
 
 	defaultConfig {

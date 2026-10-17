@@ -7,11 +7,11 @@ extends EditorExportPlugin
 
 const REGISTER_AS_HOME := true
 const PLUGIN_NAME := "LauncherPlugin"
-const BIN_DIR := "res://addons/socket_launcher/bin/"
+const BIN_DIR := "res://addons/shelves/bin/"
 
 
 func _get_name() -> String:
-	return "SocketLauncherExport"
+	return "ShelvesExport"
 
 
 func _supports_platform(platform: EditorExportPlatform) -> bool:
@@ -22,7 +22,7 @@ func _get_android_libraries(platform: EditorExportPlatform, debug: bool) -> Pack
 	var variant := "debug" if debug else "release"
 	var path := "%s%s/%s-%s.aar" % [BIN_DIR, variant, PLUGIN_NAME, variant]
 	if not FileAccess.file_exists(path):
-		push_error("Socket Launcher: %s is missing — run gradlew assemble in android-plugin/." % path)
+		push_error("Shelves: %s is missing — run gradlew assemble in android-plugin/." % path)
 		return PackedStringArray()
 	return PackedStringArray([path])
 

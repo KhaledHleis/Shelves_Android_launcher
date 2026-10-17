@@ -1,4 +1,4 @@
-package com.khaled.socketlauncher
+package com.khaled.shelves
 
 import android.content.BroadcastReceiver
 import android.content.Context
