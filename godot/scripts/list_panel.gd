@@ -11,6 +11,7 @@ signal closed
 signal choice_requested(heading: String, options: Array, current: String, on_pick: Callable)
 
 const ROW_HEIGHT := 78
+const SHEET_LEFT := 0.46               ## where a sheet starts, as a share of the width
 const REPEAT_DELAY := 0.35
 const REPEAT_RATE := 0.07
 
@@ -33,6 +34,10 @@ var _repeat_timer: float = 0.0
 var _dialog: Control
 var _cols: int = 1
 var _dim: ColorRect
+var _tabs: HBoxContainer
+## Tab names; empty means the panel has no tabs. L1/R1 or a tap changes tab.
+var tabs: Array = []
+var tab: int = 0
 ## The press that opened this panel is still "just pressed" when the panel
 ## first runs, so Y to open All apps also hid the first app in it.
 var _grace: int = 0
@@ -70,6 +75,15 @@ func _ready() -> void:
 	_search.visible = false
 	_search.text_changed.connect(func(_t: String) -> void: refresh())
 	add_child(_search)
+
+	_tabs = HBoxContainer.new()
+	_tabs.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_tabs.offset_left = Style.GUTTER
+	_tabs.offset_top = 104
+	_tabs.offset_bottom = 104 + 56
+	_tabs.add_theme_constant_override("separation", 10)
+	_tabs.visible = false
+	add_child(_tabs)
 
 	_scroll = ScrollContainer.new()
 	_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -161,11 +175,105 @@ func set_title(text: String) -> void:
 
 func enable_search(enabled: bool) -> void:
 	_search.visible = enabled
-	_scroll.offset_top = 176 if enabled else 112
+	_place_scroll()
+
+
+func _place_scroll() -> void:
+	_scroll.offset_top = 176 if (_search.visible or _tabs.visible) else 112
+
+
+## Gives the panel a row of tabs under the title.
+func set_tabs(names: Array) -> void:
+	tabs = names
+	tab = clampi(tab, 0, maxi(names.size() - 1, 0))
+	_tabs.visible = not names.is_empty()
+	_place_scroll()
+	_build_tabs()
+
+
+func select_tab(next: int) -> void:
+	if tabs.is_empty():
+		return
+	next = wrapi(next, 0, tabs.size())
+	if next == tab:
+		return
+	tab = next
+	selected = 0
+	Audio.play("folder")
+	_build_tabs()
+	# Rebuild without keeping the row: ids repeat across tabs only by accident.
+	rows = []
+	refresh()
+	_scroll.scroll_vertical = 0
+
+
+func _build_tabs() -> void:
+	for child in _tabs.get_children():
+		child.queue_free()
+	if tabs.is_empty():
+		return
+	var left := ButtonPrompt.new()
+	left.action = "folder_prev"
+	left.label_text = "\u2039"
+	left.hide_text_on_pad = true
+	left.icon_size = 34
+	left.activated.connect(func() -> void: select_tab(tab - 1))
+	_tabs.add_child(left)
+	for i in tabs.size():
+		var pill := Label.new()
+		pill.text = str(tabs[i])
+		pill.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		pill.add_theme_font_size_override("font_size", Style.FONT_SMALL)
+		var on := i == tab
+		pill.add_theme_color_override("font_color", Style.BG_DARK if on else Style.TEXT_DIM)
+		pill.add_theme_stylebox_override("normal",
+			Style.pill(Style.SURFACE_HI if on else Color(Style.SURFACE, 0.9)))
+		pill.mouse_filter = Control.MOUSE_FILTER_STOP
+		var index := i
+		pill.gui_input.connect(func(event: InputEvent) -> void:
+			var tapped := (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed) \
+				or (event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
+			if tapped:
+				select_tab(index)
+		)
+		_tabs.add_child(pill)
+	var right := ButtonPrompt.new()
+	right.action = "folder_next"
+	right.label_text = "\u203a"
+	right.hide_text_on_pad = true
+	right.icon_size = 34
+	right.activated.connect(func() -> void: select_tab(tab + 1))
+	_tabs.add_child(right)
+
+
+## The default: the whole screen. Every layout starts from here, so a panel
+## reused as a popup once does not stay a popup for the next caller.
+func set_full() -> void:
+	anchor_left = 0.0
+	anchor_right = 1.0
+	anchor_top = 0.0
+	anchor_bottom = 1.0
+	offset_left = 0.0
+	offset_right = 0.0
+	offset_top = 0.0
+	offset_bottom = 0.0
+	_dim.color = Style.BG_DARK
+	_title.offset_left = Style.GUTTER
+	_title.offset_top = 36
+	_title.offset_bottom = 36 + 56
+	_search.offset_left = Style.GUTTER
+	_scroll.offset_left = Style.GUTTER
+	_scroll.offset_right = -Style.GUTTER
+	_scroll.offset_bottom = -Style.BAR_HEIGHT - 16
+	_prompts.offset_left = Style.GUTTER
+	_prompts.offset_top = -Style.BAR_HEIGHT
+	_tabs.offset_left = Style.GUTTER
+	_place_scroll()
 
 
 ## A small centred card, for a picker that has no business covering the shelf.
 func set_popup(width: int, height: int) -> void:
+	set_full()
 	anchor_left = 0.5
 	anchor_right = 0.5
 	anchor_top = 0.5
@@ -191,15 +299,17 @@ func set_popup(width: int, height: int) -> void:
 ## A sheet covers part of the screen instead of all of it, so whatever is
 ## being edited stays visible and updates as you change it.
 func set_sheet(enabled: bool) -> void:
+	set_full()
 	if not enabled:
 		return
-	anchor_left = 0.46
+	anchor_left = SHEET_LEFT
 	offset_left = 0.0
 	_dim.color = Color(Style.BG_DARK, 0.96)
 	_title.offset_left = 36
 	_search.offset_left = 36
 	_scroll.offset_left = 36
 	_prompts.offset_left = 36
+	_tabs.offset_left = 36
 
 
 ## More than one column turns the rows into tiles — what All apps uses.
@@ -459,6 +569,13 @@ func _process(delta: float) -> void:
 	if InputMode.accept_just_pressed() and not InputMode.consume_wake():
 		activate()
 		return
+	if not tabs.is_empty():
+		if Input.is_action_just_pressed("folder_prev"):
+			select_tab(tab - 1)
+			return
+		if Input.is_action_just_pressed("folder_next"):
+			select_tab(tab + 1)
+			return
 	if Input.is_action_just_pressed("inspect"):
 		on_alt(str(selected_row().get("id", "")))
 		return

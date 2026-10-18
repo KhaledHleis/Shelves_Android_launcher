@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Shelves"
 config/description="Android home screen that shows apps as physical game media."
-config/version="0.2.0"
+config/version="0.6.0"
 run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7", "Mobile")
@@ -26,6 +26,7 @@ ControllerIcons="*res://addons/controller_icons/ControllerIcons.gd"
 Settings="*res://scripts/settings.gd"
 AppBridge="*res://scripts/app_bridge.gd"
 Library="*res://scripts/library.gd"
+Covers="*res://scripts/covers.gd"
 InputMode="*res://scripts/input_mode.gd"
 Audio="*res://scripts/audio.gd"
 

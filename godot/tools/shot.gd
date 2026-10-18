@@ -62,6 +62,31 @@ func _ready() -> void:
 			Library.set_in_folder(app["package"], fid, true)
 		main._push(main._folder_edit)
 		main._folder_edit.open_for(fid)
+	if args.has("fold"):
+		# Halfway through a folder change.
+		var fid := Library.create_folder("Games", "carousel")
+		for app in Library.search().slice(4, 10):
+			Library.set_in_folder(app["package"], fid, true)
+		await get_tree().create_timer(1.0).timeout
+		main.switch_folder(-1)
+		await get_tree().create_timer(main.FOLD_OUT + 0.12).timeout
+		get_viewport().get_texture().get_image().save_png("user://shot.png")
+		print("shot saved")
+		get_tree().quit()
+		return
+	if args.has("scroll"):
+		# Mid-scroll: the frame right after a row step is where blank models
+		# used to show.
+		var g: GridView = main.get_node("World/GridView")
+		await get_tree().create_timer(1.0).timeout
+		g.move_row(1)
+		g.move_row(1)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://shot.png")
+		print("shot saved")
+		get_tree().quit()
+		return
 	await get_tree().create_timer(1.5).timeout
 	get_viewport().get_texture().get_image().save_png("user://shot.png")
 	print("shot saved")

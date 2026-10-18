@@ -42,6 +42,17 @@ var _rotating := false
 var _moved := 0.0
 var _toast_tween: Tween
 
+## Horizontal offsets of the 3D views: one moves the selection clear of the
+## Inspect sheet, the other is the folder transition.
+var _focus_shift := 0.0
+var _slide := 0.0
+var _fold_tween: Tween
+var _fold_load_pending := false
+
+const FOLD_OUT := 0.17
+const FOLD_IN := 0.36
+const FOLD_TRAVEL := 0.9
+
 
 func _ready() -> void:
 	var sky := env.environment.sky
@@ -91,7 +102,7 @@ func _build_panels() -> void:
 		panel.choice_requested.connect(
 			func(heading: String, options: Array, current: String, on_pick: Callable) -> void:
 				_push(_choice)
-				_choice.open_choice(heading, options, current, on_pick)
+				_choice.open_choice(heading, options, current, on_pick, panel == _inspect)
 		)
 
 	_all_apps.folder_requested.connect(func(package: String) -> void:
@@ -121,7 +132,8 @@ func _build_panels() -> void:
 		_picker.open_for(package)
 	)
 	# A shape or a finish changing has to reach the models already on screen.
-	_inspect.changed.connect(func(_package: String) -> void:
+	_inspect.changed.connect(func(package: String) -> void:
+		Covers.invalidate(package)
 		for v in [carousel, grid]:
 			for item in v.get_children():
 				if item is MediaItem:
@@ -190,7 +202,65 @@ func switch_folder(step: int) -> void:
 	folder_index = wrapi(folder_index + step, 0, count)
 	Audio.play("folder")
 	top_bar.set_folders(Library.folders(), folder_index)
-	_load_folder(false)
+	_play_folder_change(step)
+
+
+## The old shelf eases out the way you pushed it, the new one eases in from
+## the other side, and each piece pops in its own time — nearest first.
+func _play_folder_change(step: int) -> void:
+	if _fold_tween != null and _fold_tween.is_valid():
+		_fold_tween.kill()
+		# Pressed again mid-way: finish the swap now rather than drop it.
+		if _fold_load_pending:
+			_fold_load_pending = false
+			_load_folder(false)
+		for v in [carousel, grid]:
+			for child in v.get_children():
+				if child is MediaItem:
+					(child as MediaItem).reset_pop()
+	var dir := float(signi(step))
+	_fold_load_pending = true
+	for node in _visible_media(view):
+		node.play_exit(FOLD_OUT, minf(absf(node.position.x) * 0.04, 0.05))
+	_fold_tween = create_tween()
+	_fold_tween.tween_method(func(v: float) -> void: _slide = v,
+		_slide, -dir * FOLD_TRAVEL, FOLD_OUT) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	_fold_tween.tween_callback(func() -> void:
+		_fold_load_pending = false
+		_load_folder(false)
+		_slide = dir * FOLD_TRAVEL
+		# Anything that left but is not coming back on screen must not stay
+		# shrunk for the next time it is used.
+		for v in [carousel, grid]:
+			for child in v.get_children():
+				if child is MediaItem and (v != view or not (child as MediaItem).visible):
+					(child as MediaItem).reset_pop()
+		for node in _visible_media(view):
+			node.play_enter(FOLD_IN, minf(node.position.length() * 0.09, 0.22))
+	)
+	_fold_tween.tween_method(func(v: float) -> void: _slide = v,
+		dir * FOLD_TRAVEL, 0.0, FOLD_IN) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _visible_media(v: Node3D) -> Array[MediaItem]:
+	var out: Array[MediaItem] = []
+	for child in v.get_children():
+		if child is MediaItem and (child as MediaItem).visible:
+			out.append(child)
+	return out
+
+
+## How far left the views move so the selection sits in the middle of what
+## the Inspect sheet leaves uncovered.
+func _sheet_shift() -> float:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return 0.0
+	var vp := get_viewport().get_visible_rect().size
+	var target := Vector2(vp.x * ListPanel.SHEET_LEFT * 0.5, vp.y * 0.5)
+	return camera.project_position(target, camera.global_position.z).x
 
 
 func _load_folder(keep_selection: bool) -> void:
@@ -218,6 +288,8 @@ func _load_folder(keep_selection: bool) -> void:
 
 func _on_selection_changed(index: int, total: int, package: String, name: String) -> void:
 	title.text = name
+	# An empty folder has no name to show, and an empty pill is just a smudge.
+	title.self_modulate.a = 0.0 if name.is_empty() else 1.0
 	bottom_bar.indicator.set_position_in_folder(index, total)
 	_tint_background(package)
 
@@ -286,7 +358,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			_pointer_drag((event as InputEventMouseMotion).relative)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	var sheet_up := _stack.has(_inspect)
+	var target := _sheet_shift() if sheet_up else 0.0
+	_focus_shift = lerpf(_focus_shift, target, clampf(delta * 9.0, 0.0, 1.0))
+	for v in [carousel, grid]:
+		v.position.x = _focus_shift + _slide
+	title.modulate.a = lerpf(title.modulate.a, 0.0 if sheet_up else 1.0,
+		clampf(delta * 12.0, 0.0, 1.0))
+
 	if view.locked or panel_open():
 		return
 	if InputMode.accept_just_pressed():

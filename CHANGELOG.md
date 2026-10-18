@@ -172,3 +172,31 @@ the v0.1 build will see this as a separate app rather than an update.
 - Touch and controller input, drag-safe launching, focus ring only on pad.
 - Kotlin plugin: `getInstalledApps()`, `getAppIcon()`, `launchApp()`.
 - Export plugin injecting the AAR and the HOME intent-filter.
+
+## v0.6 — Fixes from the device, then Slow mode
+
+Fixes first:
+
+- Covers no longer flash white while a grid scrolls. A model handed a new
+  app had nothing on its art surface until the cover finished baking. The
+  `Covers` autoload now always answers at once — the finished bake, or a
+  small draft (gradient and icon) drawn on the CPU on the spot — and swaps
+  the real cover in when it lands. The grid also keeps each model on its
+  app for as long as the app stays in the window, instead of reassigning
+  all 25 on every row step, and both views bake a few rows ahead.
+- Changing folder is animated: the old shelf eases out the way you pushed
+  it, piece by piece, and the new one eases in from the other side, nearest
+  first, with a small overshoot. Pressing again mid-way finishes the swap.
+- Inspect no longer covers the model. The 3D view slides left so the
+  selection sits in the middle of the part of the screen the sheet leaves
+  free, and value lists opened from Inspect open over the sheet rather than
+  the whole screen.
+- Settings has tabs — Home, Look, Controls, Sound, System — changed with
+  L1/R1 or a tap. Home has the Fast/Slow browsing mode.
+- The sweep gradient had a seam at nine o'clock: the angle jumps a full
+  turn there and the pattern repeated 1.5 times per turn. Whole harmonics
+  only now.
+- More gradients: aurora, waves, radial, linear, corners. More patterns:
+  bubbles (PS5-style), strips (PS4-style), sparkles, hexagons, ripples.
+- Patterns were squashed into tall ovals: the view direction already
+  carries the screen's aspect, and it was being corrected a second time.

@@ -21,8 +21,8 @@ const DEFAULTS := {
 	"music_volume_db": -14.0,
 	"clock_24h": true,
 	"carousel_autorotate": true, # idle sway on the selected model
-	"bg_style": "pools",         # pools | blending | sweep
-	"bg_overlay": "none",        # none | dots | mesh | triangles | chladni
+	"bg_style": "pools",         # see BG_STYLES
+	"bg_overlay": "none",        # see BG_OVERLAYS
 	"bg_overlay_strength": 0.30,
 	"bg_speed": 0.05,            # gradient drift
 	"bg_pattern_speed": 0.15,    # pattern drift
@@ -72,8 +72,9 @@ func save_settings() -> void:
 	f.close()
 
 
-const BG_STYLES := ["pools", "blending", "sweep"]
-const BG_OVERLAYS := ["none", "dots", "mesh", "triangles", "chladni"]
+const BG_STYLES := ["pools", "blending", "sweep", "aurora", "waves", "radial", "linear", "corners"]
+const BG_OVERLAYS := ["none", "dots", "mesh", "triangles", "chladni", "bubbles", "strips",
+	"sparkles", "hexagons", "ripples"]
 ## Named speeds rather than a slider: four steps are enough and they read
 ## better in a list. 0 means the background holds still.
 const SPEEDS := {"still": 0.0, "slow": 0.02, "normal": 0.05, "fast": 0.12}

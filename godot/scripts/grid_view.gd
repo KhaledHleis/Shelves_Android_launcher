@@ -115,17 +115,37 @@ func _layout() -> void:
 	var sel_col := index % COLS
 	var first_row := sel_row - (ROWS / 2)
 
-	for j in WINDOW:
-		var node := _nodes[j]
-		var row := first_row + (j / COLS)
-		var col := j % COLS
-		var slot := row * COLS + col
-		if row < 0 or slot < 0 or slot >= total:
-			node.visible = false
-			node.item_index = -1
-			continue
-		node.set_item(slot, items[slot]["package"], items[slot]["name"])
+	# Which node shows which slot. A node keeps its app for as long as that
+	# app stays inside the window: reassigning all of them on every row step
+	# made every model swap its art at once, and the ones still waiting for
+	# their cover flashed blank.
+	var wanted: Dictionary = {}
+	for r in ROWS:
+		for c in COLS:
+			var slot := (first_row + r) * COLS + c
+			if first_row + r >= 0 and slot < total:
+				wanted[slot] = true
+	var spare: Array[MediaItem] = []
+	var placed: Dictionary = {}
+	for node in _nodes:
+		if wanted.has(node.item_index) and not placed.has(node.item_index):
+			placed[node.item_index] = node
+		else:
+			spare.append(node)
+	for slot in wanted:
+		if not placed.has(slot):
+			var node: MediaItem = spare.pop_back()
+			node.set_item(slot, items[slot]["package"], items[slot]["name"])
+			placed[slot] = node
+	for node in spare:
+		node.visible = false
+		node.item_index = -1
 
+	for key in placed:
+		var slot: int = key
+		var node: MediaItem = placed[slot]
+		var row: int = slot / COLS
+		var col: int = slot % COLS
 		# Measured from the selection, which is why it lands at the origin.
 		var dx := float(col - sel_col) + _lag.x
 		var dy := float(row - sel_row) + _lag.y
@@ -234,9 +254,20 @@ func jump_to(target: int) -> void:
 
 
 func _emit_selection() -> void:
+	_prefetch()
 	var cur := current()
 	selection_changed.emit(index, items.size(), str(cur.get("package", "")),
 		str(cur.get("name", "")))
+
+
+## Bakes the covers two rows past the window either way, so a row arriving
+## already has its art.
+func _prefetch() -> void:
+	var from := maxi((index / COLS - ROWS / 2 - 2) * COLS, 0)
+	var to := mini((index / COLS + ROWS / 2 + 3) * COLS, items.size())
+	for i in range(from, to):
+		var pkg := str(items[i]["package"])
+		Covers.request(pkg, str(Library.record(pkg).get("model", "box")))
 
 
 func _handle_repeat(delta: float) -> void:

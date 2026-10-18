@@ -168,9 +168,22 @@ func jump_to(target: int) -> void:
 
 
 func _emit_selection() -> void:
+	_prefetch()
 	var cur := current()
 	selection_changed.emit(index, items.size(), str(cur.get("package", "")),
 		str(cur.get("name", "")))
+
+
+## Bakes covers a few slots past the visible three, so holding a direction
+## never outruns them.
+func _prefetch() -> void:
+	var total := items.size()
+	if total == 0:
+		return
+	for k in range(-6, 7):
+		var i := wrapi(index + k, 0, total)
+		var pkg := str(items[i]["package"])
+		Covers.request(pkg, str(Library.record(pkg).get("model", "box")), absi(k) <= 1)
 
 
 func _handle_repeat(delta: float) -> void:

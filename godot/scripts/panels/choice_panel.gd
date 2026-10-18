@@ -7,7 +7,11 @@ var _options: Array = []
 var _on_pick: Callable
 
 
-func open_choice(heading: String, options: Array, current: String, on_pick: Callable) -> void:
+## [param in_sheet] keeps the list on the same side of the screen as the
+## sheet that asked for it, so picking a finish in Inspect does not cover the
+## model whose finish is changing.
+func open_choice(heading: String, options: Array, current: String, on_pick: Callable,
+		in_sheet: bool = false) -> void:
 	_options = options
 	_on_pick = on_pick
 	# All colours and no words: show them as a small grid of chips instead of
@@ -17,9 +21,18 @@ func open_choice(heading: String, options: Array, current: String, on_pick: Call
 		if not option.has("swatch"):
 			all_swatches = false
 			break
-	if all_swatches:
+	if in_sheet:
+		set_sheet(true)
+		# Opaque: it sits exactly on top of the sheet that opened it, and the
+		# rows underneath showing through read as a second list.
+		_dim.color = Style.BG_DARK
+		set_columns(5 if all_swatches else 1)
+	elif all_swatches:
 		set_columns(8)
 		set_popup(880, 620)
+	else:
+		set_full()
+		set_columns(1)
 	open()
 	set_title(heading)
 	for i in options.size():
