@@ -24,7 +24,7 @@ static func get_mesh() -> ArrayMesh:
 
 
 static func _build() -> ArrayMesh:
-	return _slab(WIDTH, HEIGHT, DEPTH, 0.016)
+	return _slab(WIDTH, HEIGHT, DEPTH, 0.016, true)
 
 
 static func _build_flat() -> ArrayMesh:
@@ -92,7 +92,17 @@ static var _shapes: Dictionary = {}
 const KINDS := ["box", "cartridge", "disc", "card"]
 
 
+## A thicker case for the Slow-mode shelf. At real PS4 proportions a spine
+## is 30 pixels wide on a 1080p screen, too narrow to read a title on; this
+## is closer to a big-box PC game, and only the shelf uses it.
+const SHELF_DEPTH := 0.085
+
+
 static func mesh_for(kind: String) -> ArrayMesh:
+	if kind == "shelfbox":
+		if not _shapes.has(kind):
+			_shapes[kind] = _slab(WIDTH, HEIGHT, SHELF_DEPTH, 0.016, true)
+		return _shapes[kind]
 	if kind == "box" or not kind in KINDS:
 		return get_mesh()
 	if not _shapes.has(kind):
@@ -112,6 +122,7 @@ static func depth_for(kind: String) -> float:
 		"cartridge": return 0.055
 		"disc": return 0.008
 		"card": return 0.007
+		"shelfbox": return SHELF_DEPTH * 0.5
 		_: return DEPTH * 0.5
 
 
@@ -126,7 +137,12 @@ static func height_for(kind: String) -> float:
 ## A slab with a chamfered front edge: the bevel is what makes the shape read
 ## as an object rather than a painted rectangle, because it catches the light
 ## at a different angle from the face.
-static func _slab(w: float, h: float, d: float, bevel: float = 0.018) -> ArrayMesh:
+##
+## With [param spine], the left side (-X) is a surface of its own — surface 2,
+## named "spine" — so a title can be printed on it for the Slow-mode shelf.
+## UV there runs back to front across and top to bottom down.
+static func _slab(w: float, h: float, d: float, bevel: float = 0.018,
+		spine: bool = false) -> ArrayMesh:
 	var mesh := ArrayMesh.new()
 	var hw := w * 0.5
 	var hh := h * 0.5
@@ -161,8 +177,11 @@ static func _slab(w: float, h: float, d: float, bevel: float = 0.018) -> ArrayMe
 	body.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_quad(body, Vector3(hw, hh, -hd), Vector3(-hw, hh, -hd), Vector3(-hw, -hh, -hd),
 		Vector3(hw, -hh, -hd), Vector3(0, 0, -1))
-	_quad(body, Vector3(-hw, hh, -hd), Vector3(-hw, hh, hd), Vector3(-hw, -hh, hd),
-		Vector3(-hw, -hh, -hd), Vector3(-1, 0, 0))
+	var side := SurfaceTool.new()
+	if spine:
+		side.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_quad(side if spine else body, Vector3(-hw, hh, -hd), Vector3(-hw, hh, hd),
+		Vector3(-hw, -hh, hd), Vector3(-hw, -hh, -hd), Vector3(-1, 0, 0))
 	_quad(body, Vector3(hw, hh, hd), Vector3(hw, hh, -hd), Vector3(hw, -hh, -hd),
 		Vector3(hw, -hh, hd), Vector3(1, 0, 0))
 	_quad(body, Vector3(-hw, hh, -hd), Vector3(hw, hh, -hd), Vector3(hw, hh, hd),
@@ -173,6 +192,10 @@ static func _slab(w: float, h: float, d: float, bevel: float = 0.018) -> ArrayMe
 	body.commit(mesh)
 	mesh.surface_set_name(0, "art")
 	mesh.surface_set_name(1, "body")
+	if spine:
+		side.generate_tangents()
+		side.commit(mesh)
+		mesh.surface_set_name(2, "spine")
 	return mesh
 
 
@@ -260,7 +283,7 @@ static func _disc() -> ArrayMesh:
 	for i in SEGMENTS:
 		var a0 := TAU * float(i) / SEGMENTS
 		var a1 := TAU * float(i + 1) / SEGMENTS
-		_ring_quad(face, a0, a1, inner, outer, hd, Vector3(0, 0, 1), false)
+		_ring_quad(face, a0, a1, inner, outer, hd, Vector3(0, 0, 1), true)
 	face.generate_tangents()
 	face.commit(mesh)
 
@@ -269,7 +292,7 @@ static func _disc() -> ArrayMesh:
 	for i in SEGMENTS:
 		var a0 := TAU * float(i) / SEGMENTS
 		var a1 := TAU * float(i + 1) / SEGMENTS
-		_ring_quad(body, a0, a1, inner, outer, -hd, Vector3(0, 0, -1), true)
+		_ring_quad(body, a0, a1, inner, outer, -hd, Vector3(0, 0, -1), false)
 		# outer rim
 		var p0 := Vector3(cos(a0) * outer, sin(a0) * outer, hd)
 		var p1 := Vector3(cos(a1) * outer, sin(a1) * outer, hd)
@@ -304,6 +327,10 @@ static func _ring_quad(st: SurfaceTool, a0: float, a1: float, inner: float, oute
 	]
 	if flip:
 		pts.reverse()
+	# Godot culls counter-clockwise faces, and inner→outer→outer→inner with
+	# the angle increasing runs counter-clockwise seen from +Z. So the label
+	# side is the flipped one — it was the other way round, which culled the
+	# label and showed the back of the disc through it.
 	# UVs map the disc face onto the whole image, so round art lands right.
 	var order := [0, 1, 2, 0, 2, 3]
 	for i in order:

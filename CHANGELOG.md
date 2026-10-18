@@ -200,3 +200,23 @@ Fixes first:
   bubbles (PS5-style), strips (PS4-style), sparkles, hexagons, ripples.
 - Patterns were squashed into tall ovals: the view direction already
   carries the screen's aspect, and it was being corrected a second time.
+
+Then Slow mode, chosen under Settings → Home → Browsing mode:
+
+- The shelf: every folder becomes a row of boxes standing on a plank. Each
+  box shows its spine — a number, the title running down it, the icon at the
+  foot — and the selection is pulled forward and turned to show its cover.
+  The shelf has ends; it does not wrap. Shelf boxes are thicker than the
+  Fast-mode case, because at real proportions a spine was too narrow to read.
+- A opens the box rather than launching. The case lifts off the shelf, the
+  shelf steps back, and the lid swings open on the spine like a book. The
+  inside of the lid holds the insert (Inspect → Box insert, from the same
+  art folder as covers), the tray holds the media in the app's own shape —
+  a disc when the app is a plain box.
+- A again plays the insert animation and launches; B (or the back gesture,
+  or a tap outside the case) closes the lid and puts the box back. The
+  right stick, or a drag, turns the media in the tray.
+- The bottom prompt says Open on the shelf and Play in the open box.
+
+Also fixed on the way: the disc's label side was wound the wrong way round,
+so it was culled and every disc showed its blank back through it.

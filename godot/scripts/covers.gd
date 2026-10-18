@@ -14,6 +14,7 @@ extends Node
 ## queues the real bake, which arrives through [signal cover_ready].
 
 signal cover_ready(package: String, kind: String, texture: Texture2D)
+signal spine_ready(package: String, number: int, texture: Texture2D)
 
 const SIZES := {
 	"box": Vector2i(312, 400),
@@ -21,6 +22,7 @@ const SIZES := {
 	"disc": Vector2i(384, 384),
 	"card": Vector2i(440, 300),
 }
+const SPINE_SIZE := Vector2i(820, 120)   ## baked lying down, turned upright after
 const DRAFT_SCALE := 4              ## the CPU draft is this many times smaller
 const WORKERS := 3                  ## bakes in flight at once
 const MAX_CACHE := 240
@@ -63,6 +65,28 @@ func cover_for(package: String, kind: String, urgent: bool = false) -> Texture2D
 	return _drafts[key]
 
 
+## The spine of a box on the Slow-mode shelf: its number at the top, the
+## title running down, the icon at the foot. Never null.
+func spine_for(package: String, number: int, urgent: bool = false) -> Texture2D:
+	var key := "%s|spine|%d" % [package, number]
+	if _baked.has(key):
+		return _baked[key]
+	if not _pending.has(key) and not package.is_empty():
+		_pending[key] = true
+		if urgent:
+			_queue.push_front(key)
+		else:
+			_queue.append(key)
+	var dkey := "%s|spine" % package
+	if not _drafts.has(dkey):
+		var colors := _colors(package)
+		var img := Image.create(8, 64, false, Image.FORMAT_RGBA8)
+		img.fill((colors[1] as Color).darkened(0.25))
+		img.fill_rect(Rect2i(0, 0, 8, 6), colors[0])
+		_drafts[dkey] = ImageTexture.create_from_image(img)
+	return _drafts[dkey]
+
+
 ## True when [method cover_for] would return the finished bake.
 func is_baked(package: String, kind: String) -> bool:
 	return _baked.has(key_for(package, kind))
@@ -92,6 +116,10 @@ func invalidate(package: String) -> void:
 		var key := key_for(package, kind)
 		_baked.erase(key)
 		_drafts.erase(key)
+	_drafts.erase("%s|spine" % package)
+	for key in _baked.keys():
+		if str(key).begins_with(package + "|spine|"):
+			_baked.erase(key)
 
 
 func _process(_delta: float) -> void:
@@ -189,11 +217,13 @@ func _bake(key: String, vp: SubViewport) -> void:
 	var parts := key.split("|")
 	var package := parts[0]
 	var kind := parts[1]
-	var size: Vector2i = SIZES[kind]
-
 	if not _can_bake:
 		_finish(key, vp, null)
 		return
+	if kind == "spine":
+		_bake_spine(key, vp, package, int(parts[2]))
+		return
+	var size: Vector2i = SIZES[kind]
 
 	vp.size = size
 	for child in vp.get_children():
@@ -251,20 +281,87 @@ func _bake(key: String, vp: SubViewport) -> void:
 	_finish(key, vp, tex, icon_tex != null)
 
 
+func _bake_spine(key: String, vp: SubViewport, package: String, number: int) -> void:
+	var size := SPINE_SIZE
+	vp.size = size
+	for child in vp.get_children():
+		child.free()
+	var colors := _colors(package)
+	var vivid: Color = colors[0]
+	var deep: Color = (colors[1] as Color).darkened(0.25)
+
+	var bg := ColorRect.new()
+	bg.color = deep
+	bg.position = Vector2.ZERO
+	bg.size = Vector2(size)
+	vp.add_child(bg)
+	# a band of the bright colour where the number sits, like a series stripe
+	var band := ColorRect.new()
+	band.color = vivid
+	band.position = Vector2.ZERO
+	band.size = Vector2(118, size.y)
+	vp.add_child(band)
+
+	var num := Label.new()
+	num.text = "%03d" % number
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	num.add_theme_font_size_override("font_size", 40)
+	num.add_theme_color_override("font_color", deep.darkened(0.4))
+	num.position = Vector2.ZERO
+	num.size = Vector2(118, size.y)
+	vp.add_child(num)
+
+	var icon_tex := AppBridge.get_icon(package)
+	if icon_tex != null:
+		var icon := TextureRect.new()
+		icon.texture = icon_tex
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		icon.position = Vector2(size.x - size.y + 10, 10)
+		icon.size = Vector2(size.y - 20, size.y - 20)
+		vp.add_child(icon)
+
+	var label := Label.new()
+	label.text = Library.display_name(package, _app_name(package)).to_upper()
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 56)
+	label.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+	label.position = Vector2(140, 0)
+	label.size = Vector2(size.x - 140 - size.y - 10, size.y)
+	vp.add_child(label)
+
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	await RenderingServer.frame_post_draw
+	var image := vp.get_texture().get_image()
+	var tex: Texture2D = null
+	if image != null and not image.is_empty():
+		# Upright, reading downwards, number at the top.
+		image.rotate_90(CLOCKWISE)
+		image.generate_mipmaps()
+		tex = ImageTexture.create_from_image(image)
+	_finish(key, vp, tex, icon_tex != null)
+
+
 func _finish(key: String, vp: SubViewport, tex: Texture2D, keep: bool = true) -> void:
 	_pending.erase(key)
 	_free.append(vp)
 	if tex == null:
 		return
 	var parts := key.split("|")
-	if not keep and AppBridge.get_icon(parts[0]) != null:
+	if not keep and AppBridge.get_icon(parts[0]) != null and parts[1] != "spine":
 		# The icon landed while this was baking.
 		request(parts[0], parts[1], true)
 	if keep:
 		if _baked.size() >= MAX_CACHE:
 			_baked.erase(_baked.keys()[0])
 		_baked[key] = tex
-	cover_ready.emit(parts[0], parts[1], tex)
+	if parts[1] == "spine":
+		spine_ready.emit(parts[0], int(parts[2]), tex)
+	else:
+		cover_ready.emit(parts[0], parts[1], tex)
 
 
 func _app_name(package: String) -> String:

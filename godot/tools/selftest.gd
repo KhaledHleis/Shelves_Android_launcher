@@ -10,6 +10,7 @@ func _ready() -> void:
 	# Start from a clean store: this test files apps into folders and hides
 	# them, and a previous run's leftovers changed the counts it asserts on.
 	Library.reset()
+	Settings.set_value("mode", "fast")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
@@ -258,8 +259,12 @@ func _ready() -> void:
 		"a background palette overrides the icon colours")
 	for kind in BoxMediaMesh.KINDS:
 		var mesh := BoxMediaMesh.mesh_for(kind)
-		_check(mesh != null and mesh.get_surface_count() == 2,
-			"%s is a two-surface mesh (art, body)" % kind)
+		# The box has a third surface, its spine, for the Slow-mode shelf.
+		var want := 3 if kind == "box" else 2
+		_check(mesh != null and mesh.get_surface_count() == want,
+			"%s has %d surfaces (art, body%s)" % [kind, want, ", spine" if want == 3 else ""])
+		_check(mesh.surface_get_name(0) == "art" and mesh.surface_get_name(1) == "body",
+			"%s surfaces are named art and body" % kind)
 
 	# A custom launch action is parsed by shape, not by asking the user.
 	Library.set_app_value(package, "launch", inspect._parse_launch("gamenative://play/42"))
@@ -280,6 +285,56 @@ func _ready() -> void:
 	var diag := AppBridge.diagnostics()
 	_check(diag.contains("serving:") and diag.length() > 40,
 		"diagnostics text builds (%d chars)" % diag.length())
+
+	# ---- settings tabs
+	var settings: SettingsPanel = main._settings
+	main._push(settings)
+	settings.open()
+	var first_ids := settings.rows.map(func(r): return r["id"])
+	settings.select_tab(1)
+	var look_ids := settings.rows.map(func(r): return r["id"])
+	_check(settings.tab == 1 and look_ids.has("bg_style") and not look_ids.has("bg_style") == first_ids.has("bg_style"),
+		"settings tabs show different rows (%s / %s)" % [first_ids, look_ids])
+	settings.select_tab(settings.tab + 1)
+	_check(settings.tab == 2, "tabs step forward, got %d" % settings.tab)
+	settings.close()
+
+	# ---- Slow mode
+	Settings.set_value("mode", "slow")
+	await get_tree().process_frame
+	_check(main.view == main.shelf, "slow mode puts the folder on the shelf")
+	var shelf: ShelfView = main.shelf
+	shelf.jump_to(0)
+	shelf.move(-1)
+	_check(shelf.index == 0, "the shelf has ends: no wrap off the start")
+	shelf.move(3)
+	_check(shelf.index == 3, "three moves along the shelf, got %d" % shelf.index)
+	await get_tree().create_timer(0.7).timeout
+	var boxes := 0
+	for child in shelf.get_children():
+		if child is MediaItem:
+			boxes += 1
+			_check((child as MediaItem).force_kind == "shelfbox", "every shelf item is a box")
+	_check(boxes == ShelfView.WINDOW, "shelf keeps %d boxes, got %d" % [ShelfView.WINDOW, boxes])
+	var sel := shelf.center_node()
+	_check(sel != null and absf(sel.rotation.y) < 0.01, "the selection faces the front")
+	var spined := 0
+	for child in shelf.get_children():
+		if child is MediaItem and child.visible and child != sel \
+				and absf(absf(child.rotation.y) - PI * 0.5) < 0.01:
+			spined += 1
+	_check(spined > 0, "neighbours stand spine-out (%d)" % spined)
+	shelf.launch_selected()
+	_check(main.box_view.is_open, "A on the shelf opens the box, not the game")
+	_check(shelf.hidden_slot == shelf.index, "the opened box leaves the shelf")
+	await get_tree().create_timer(0.8).timeout
+	main.box_view.close()
+	await get_tree().create_timer(1.0).timeout
+	_check(not main.box_view.is_open and shelf.hidden_slot == -1 and not shelf.locked,
+		"B closes the box and hands back to the shelf")
+	Settings.set_value("mode", "fast")
+	await get_tree().process_frame
+	_check(main.view != main.shelf, "fast mode takes the shelf away again")
 
 	carousel.launch_selected()
 	_check(carousel.locked, "launching locks input until the animation ends")

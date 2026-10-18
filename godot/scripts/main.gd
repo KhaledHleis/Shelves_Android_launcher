@@ -18,6 +18,10 @@ const CENTRE_H := 0.58
 @onready var toast: Label = $UI/Toast
 
 var folder_index: int = 0
+## Slow mode: the shelf, and the case opened off it.
+var shelf: ShelfView
+var box_view: BoxView
+var _shelf_z := 0.0
 ## Whichever of the two views the current folder is set to use.
 var view: Node3D
 
@@ -70,8 +74,18 @@ func _ready() -> void:
 	elif AppBridge.plugin_returned_nothing():
 		_show_badge("Plugin loaded but returned no apps (tap for details)")
 
+	shelf = ShelfView.new()
+	shelf.name = "ShelfView"
+	shelf.visible = false
+	world.add_child(shelf)
+	box_view = BoxView.new()
+	box_view.name = "BoxView"
+	world.add_child(box_view)
+	shelf.open_requested.connect(_open_box)
+	box_view.closed.connect(_on_box_closed)
+
 	view = carousel
-	for v in [carousel, grid]:
+	for v in _views():
 		v.selection_changed.connect(_on_selection_changed)
 	_build_panels()
 	top_bar.folder_tapped.connect(func(step: int) -> void: switch_folder(step))
@@ -83,6 +97,8 @@ func _ready() -> void:
 	Settings.changed.connect(func(key: String) -> void:
 		if key.begins_with("bg_"):
 			_apply_background_style()
+		elif key == "mode":
+			_load_folder(true)
 	)
 	_apply_background_style()
 	_on_library_changed()
@@ -134,7 +150,7 @@ func _build_panels() -> void:
 	# A shape or a finish changing has to reach the models already on screen.
 	_inspect.changed.connect(func(package: String) -> void:
 		Covers.invalidate(package)
-		for v in [carousel, grid]:
+		for v in _views():
 			for item in v.get_children():
 				if item is MediaItem:
 					(item as MediaItem).apply_customization()
@@ -168,8 +184,12 @@ func _on_panel_closed(panel: ListPanel) -> void:
 ## True while any panel is up — the home screen stops reading input then, so
 ## a press cannot move the shelf behind an open list.
 func _set_view_input(enabled: bool) -> void:
-	carousel.reads_input = enabled
-	grid.reads_input = enabled
+	for v in _views():
+		v.reads_input = enabled
+
+
+func _views() -> Array[Node3D]:
+	return [carousel, grid, shelf]
 
 
 func panel_open() -> bool:
@@ -181,6 +201,8 @@ func _notification(what: int) -> void:
 		# Android's back gesture closes the top panel rather than the app.
 		if not _stack.is_empty():
 			_stack.back().close()
+		elif box_view.is_open:
+			box_view.close()
 	if what == NOTIFICATION_APPLICATION_RESUMED:
 		# Picks up anything installed or removed while we were in the background.
 		Library.refresh()
@@ -197,7 +219,7 @@ func _on_library_changed() -> void:
 
 func switch_folder(step: int) -> void:
 	var count := Library.folder_count()
-	if count <= 1 or view.locked:
+	if count <= 1 or view.locked or box_view.is_open:
 		return
 	folder_index = wrapi(folder_index + step, 0, count)
 	Audio.play("folder")
@@ -214,7 +236,7 @@ func _play_folder_change(step: int) -> void:
 		if _fold_load_pending:
 			_fold_load_pending = false
 			_load_folder(false)
-		for v in [carousel, grid]:
+		for v in _views():
 			for child in v.get_children():
 				if child is MediaItem:
 					(child as MediaItem).reset_pop()
@@ -232,7 +254,7 @@ func _play_folder_change(step: int) -> void:
 		_slide = dir * FOLD_TRAVEL
 		# Anything that left but is not coming back on screen must not stay
 		# shrunk for the next time it is used.
-		for v in [carousel, grid]:
+		for v in _views():
 			for child in v.get_children():
 				if child is MediaItem and (v != view or not (child as MediaItem).visible):
 					(child as MediaItem).reset_pop()
@@ -271,8 +293,11 @@ func _load_folder(keep_selection: bool) -> void:
 	if keep_selection and view != null:
 		keep = str(view.current().get("package", ""))
 
-	# Each folder remembers whether it is a carousel or a grid.
+	# Each folder remembers whether it is a carousel or a grid; Slow mode
+	# puts every folder on the shelf.
 	var wanted: Node3D = grid if str(folder.get("layout", "carousel")) == "grid" else carousel
+	if str(Settings.get_value("mode")) == "slow":
+		wanted = shelf
 	if wanted != view:
 		view.visible = false
 		view.set_items([] as Array[Dictionary])
@@ -281,7 +306,8 @@ func _load_folder(keep_selection: bool) -> void:
 	view.set_items(Library.apps_in_folder(str(folder["id"])), keep)
 	# The grid prints every name on its own box, so the big centred title
 	# underneath is just something for the bottom row to collide with.
-	title.visible = view == carousel
+	title.visible = view != grid
+	bottom_bar.set_launch_text("Open" if view == shelf else "Launch")
 
 
 # ---------------------------------------------------------------- selection
@@ -362,11 +388,17 @@ func _process(delta: float) -> void:
 	var sheet_up := _stack.has(_inspect)
 	var target := _sheet_shift() if sheet_up else 0.0
 	_focus_shift = lerpf(_focus_shift, target, clampf(delta * 9.0, 0.0, 1.0))
-	for v in [carousel, grid]:
+	for v in _views():
 		v.position.x = _focus_shift + _slide
 	title.modulate.a = lerpf(title.modulate.a, 0.0 if sheet_up else 1.0,
 		clampf(delta * 12.0, 0.0, 1.0))
 
+	shelf.position.z = _shelf_z
+
+	if box_view.is_open:
+		if not panel_open():
+			_box_input(delta)
+		return
 	if view.locked or panel_open():
 		return
 	if InputMode.accept_just_pressed():
@@ -391,7 +423,55 @@ func _process(delta: float) -> void:
 
 
 func _page_jump() -> int:
+	if view == shelf:
+		return ShelfView.PAGE_JUMP
 	return GridView.PAGE_JUMP if view == grid else Carousel.PAGE_JUMP
+
+
+# ---------------------------------------------------------------- slow mode
+
+func _open_box(package: String, node: MediaItem) -> void:
+	shelf.locked = true
+	shelf.hidden_slot = shelf.index
+	box_view.open(package, node)
+	bottom_bar.set_launch_text("Play")
+	# The shelf steps back out of the way while the case is open.
+	create_tween().tween_property(self, "_shelf_z", -0.9, 0.4) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	title.self_modulate.a = 0.0
+
+
+func _on_box_closed() -> void:
+	shelf.hidden_slot = -1
+	shelf.locked = false
+	bottom_bar.set_launch_text("Open")
+	title.self_modulate.a = 1.0
+
+
+func _close_box() -> void:
+	if box_view.busy:
+		return
+	box_view.close()
+	create_tween().tween_property(self, "_shelf_z", 0.0, 0.35) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+
+
+func _box_input(delta: float) -> void:
+	if box_view.busy:
+		return
+	if InputMode.accept_just_pressed():
+		if not InputMode.consume_wake():
+			box_view.play()
+	elif InputMode.back_just_pressed():
+		_close_box()
+	else:
+		var rx := 0.0
+		for device in Input.get_connected_joypads():
+			var ax := Input.get_joy_axis(device, JOY_AXIS_RIGHT_X)
+			if absf(ax) > absf(rx):
+				rx = ax
+		if absf(rx) > 0.22:
+			box_view.rotate_media(rx * 2.6 * delta)
 
 
 func _pointer_down(pos: Vector2) -> void:
@@ -405,6 +485,10 @@ func _pointer_down(pos: Vector2) -> void:
 
 
 func _pointer_drag(relative: Vector2) -> void:
+	if box_view.is_open:
+		_moved += relative.length()
+		box_view.rotate_media(relative.x * 0.008)
+		return
 	if not _dragging or view.locked:
 		return
 	_moved += relative.length()
@@ -431,6 +515,16 @@ func _pointer_up(pos: Vector2) -> void:
 	var held := Time.get_ticks_msec() / 1000.0 - _press_time
 	# A drag never launches — the v0.1 rule, kept.
 	if _moved > TAP_SLOP or held > TAP_TIME:
+		return
+	if box_view.is_open:
+		# Right half of the open case is the media: play it. Outside the case
+		# closes it, the way B does. The insert side does nothing.
+		var vp := get_viewport().get_visible_rect().size
+		var case_rect := Rect2(vp.x * 0.17, vp.y * 0.12, vp.x * 0.66, vp.y * 0.76)
+		if not case_rect.has_point(pos):
+			_close_box()
+		elif pos.x > vp.x * 0.5:
+			box_view.play()
 		return
 	var centre := _centre_rect()
 	if centre.has_point(pos):
@@ -462,7 +556,10 @@ func _centre_rect() -> Rect2:
 func _on_prompt(id: String) -> void:
 	match id:
 		"launch":
-			view.launch_selected()
+			if box_view.is_open:
+				box_view.play()
+			else:
+				view.launch_selected()
 		"settings":
 			_push(_settings)
 			_settings.open()

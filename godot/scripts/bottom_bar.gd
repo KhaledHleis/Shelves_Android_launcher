@@ -69,3 +69,9 @@ func _add_prompt(parent: Control, action: String, text: String, id: String) -> B
 	parent.add_child(prompt)
 	prompt.activated.connect(func() -> void: prompt_activated.emit(id))
 	return prompt
+
+
+## What A does right now: Launch, Open (Slow-mode shelf) or Play (open box).
+func set_launch_text(text: String) -> void:
+	if _launch_prompt != null and _launch_prompt.label_text != text:
+		_launch_prompt.label_text = text

@@ -24,6 +24,7 @@ func _ready() -> void:
 		if a.begins_with("overlay="):
 			Settings.set_value("bg_overlay", a.substr(8))
 			Settings.set_value("bg_overlay_strength", 0.5)
+	Settings.set_value("mode", "slow" if (args.has("slow") or args.has("openbox")) else "fast")
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 
@@ -62,6 +63,18 @@ func _ready() -> void:
 			Library.set_in_folder(app["package"], fid, true)
 		main._push(main._folder_edit)
 		main._folder_edit.open_for(fid)
+	if args.has("slow"):
+		main.shelf.move(4)
+	if args.has("openbox"):
+		main.shelf.move(2)
+		await get_tree().create_timer(0.8).timeout
+		main.shelf.launch_selected()
+		if args.has("mid"):
+			await get_tree().create_timer(0.3).timeout
+			get_viewport().get_texture().get_image().save_png("user://shot.png")
+			print("shot saved")
+			get_tree().quit()
+			return
 	if args.has("fold"):
 		# Halfway through a folder change.
 		var fid := Library.create_folder("Games", "carousel")

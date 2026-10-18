@@ -62,6 +62,8 @@ func build_rows() -> Array[Dictionary]:
 			"suffix": _art_name(str(rec.get("cover", "")))},
 		{"id": "label", "text": "Label art (disc, cartridge)",
 			"suffix": _art_name(str(rec.get("label", "")))},
+		{"id": "insert", "text": "Box insert (Slow mode)",
+			"suffix": _art_name(str(rec.get("insert", "")))},
 		{"id": "launch", "text": "Launch action",
 			"suffix": "default" if launch.is_empty() else str(launch.get("data", "custom"))},
 		{"id": "folders", "text": "Folders",
@@ -139,7 +141,7 @@ func on_activate(id: String) -> void:
 					_done()
 			)
 			return
-		"cover", "label":
+		"cover", "label", "insert":
 			ArtLibrary.ensure_folder()
 			_art_target = id
 			_picking_art = true
@@ -159,7 +161,7 @@ func on_activate(id: String) -> void:
 			folder_requested.emit(package)
 			return
 		"reset":
-			for key in ["display_name", "cover", "label"]:
+			for key in ["display_name", "cover", "label", "insert"]:
 				Library.set_app_value(package, key, "")
 			Library.set_app_value(package, "model", "box")
 			Library.set_app_value(package, "finish", "opaque")

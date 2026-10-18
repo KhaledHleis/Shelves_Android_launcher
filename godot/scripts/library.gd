@@ -386,6 +386,7 @@ func _new_record() -> Dictionary:
 		"shell": "matte",       # the plastic: matte | glossy | smoked | metal | rubber
 		"cover": "",            # path to an image in the watched art folder
 		"label": "",
+		"insert": "",           # Slow mode: art inside the box lid
 		"background": "auto",   # auto, a name from PALETTES, or custom
 		"bg_a": "violet",       # swatch names, used when background is custom
 		"bg_b": "ink",

@@ -30,6 +30,12 @@ var _idle_since := 0.0
 var _phase := 0.0
 var _locked := false                   ## true during the insert animation
 var _pop: Tween                        ## the one scale tween on the pivot
+var _spine_mat: StandardMaterial3D
+
+## Set by the Slow-mode shelf: every app is a box there, whatever its media,
+## and its spine carries a number. Empty / 0 elsewhere.
+var force_kind: String = ""
+var spine_number: int = 0
 
 
 func _init() -> void:
@@ -48,6 +54,10 @@ func _init() -> void:
 	_box.mesh = BoxMediaMesh.get_mesh()
 	_box.set_surface_override_material(0, _cover_mat)
 	_box.set_surface_override_material(1, _body_mat)
+	_spine_mat = StandardMaterial3D.new()
+	_spine_mat.roughness = 0.5
+	_spine_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	_box.set_surface_override_material(2, _spine_mat)
 	_pivot.add_child(_box)
 
 	# A soft contact shadow under the model. Without it the case floats: there
@@ -71,6 +81,7 @@ func _init() -> void:
 
 	_phase = randf() * TAU
 	Covers.cover_ready.connect(_on_cover_ready)
+	Covers.spine_ready.connect(_on_spine_ready)
 
 
 func _process(delta: float) -> void:
@@ -93,9 +104,10 @@ func _process(delta: float) -> void:
 
 # ---------------------------------------------------------------- content
 
-func set_item(index: int, package_name: String, label: String) -> void:
-	if item_index == index and package == package_name:
+func set_item(index: int, package_name: String, label: String, number: int = 0) -> void:
+	if item_index == index and package == package_name and number == spine_number:
 		return
+	spine_number = number
 	item_index = index
 	package = package_name
 	title = label
@@ -107,10 +119,12 @@ func set_item(index: int, package_name: String, label: String) -> void:
 ## the item is reused and again whenever Inspect changes something.
 func apply_customization() -> void:
 	var rec := Library.record(package)
-	_kind = str(rec.get("model", "box"))
+	_kind = force_kind if not force_kind.is_empty() else str(rec.get("model", "box"))
 	_finish = str(rec.get("finish", "opaque"))
 	_shell = str(rec.get("shell", "matte"))
 	_box.mesh = BoxMediaMesh.mesh_for(_kind)
+	if _box.mesh.get_surface_count() > 2:
+		_box.set_surface_override_material(2, _spine_mat)
 	_apply_finish()
 	_apply_shell()
 
@@ -132,6 +146,7 @@ func apply_customization() -> void:
 	white.a = _cover_mat.albedo_color.a
 	_cover_mat.albedo_color = white
 	_apply_colors()
+	_apply_spine()
 
 
 func _apply_finish() -> void:
@@ -170,10 +185,30 @@ func _apply_finish() -> void:
 ## through [signal Covers.cover_ready].
 func apply_icon(_tex: Texture2D) -> void:
 	_apply_colors()
+	_apply_spine()
+
+
+## The spine carries the title only on the shelf; anywhere else it is the
+## same plastic as the rest of the case.
+func _apply_spine() -> void:
+	if spine_number > 0 and _box.mesh.get_surface_count() > 2:
+		_spine_mat.albedo_texture = Covers.spine_for(package, spine_number, is_center)
+		_spine_mat.albedo_color = Color.WHITE
+	else:
+		_spine_mat.albedo_texture = null
+		_spine_mat.albedo_color = _body_mat.albedo_color
+	_spine_mat.roughness = _body_mat.roughness
+	_spine_mat.metallic = _body_mat.metallic
+
+
+func _on_spine_ready(pkg: String, number: int, tex: Texture2D) -> void:
+	if pkg == package and number == spine_number:
+		_spine_mat.albedo_texture = tex
 
 
 func _on_cover_ready(pkg: String, kind: String, tex: Texture2D) -> void:
-	if pkg == package and kind == _kind and not _has_user_art:
+	if pkg == package and Covers.key_for(pkg, kind) == Covers.key_for(pkg, _kind) \
+			and not _has_user_art:
 		_cover_mat.albedo_texture = tex
 
 
@@ -293,6 +328,11 @@ func play_enter(duration: float, delay: float = 0.0) -> void:
 	_pop.tween_interval(delay)
 	_pop.tween_property(_pivot, "scale", Vector3.ONE, duration) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## The contact shadow belongs on a floor; inside an open case it is a smudge.
+func set_shadow_visible(on: bool) -> void:
+	_shadow.visible = on
 
 
 ## Full size at once, no animation — for a node coming back from an exit
